@@ -2,335 +2,999 @@
 <html lang="fr">
 
 <head>
+
     <meta charset="UTF-8">
 
-    <title>Tableau de bord scolaire</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Tableau de bord analyse scolaire</title>
+
 
     <style>
 
-        body {
-            font-family: Arial, sans-serif;
-            background: #f4f6f9;
-            margin: 0;
-            padding: 30px;
+        * {
+            box-sizing: border-box;
         }
+
+
+        body {
+
+            font-family: Arial, sans-serif;
+
+            background: #f4f6f9;
+
+            margin: 0;
+
+            padding: 30px;
+
+            color: #222;
+
+        }
+
 
         h1 {
+
+            margin-top: 0;
+
             margin-bottom: 25px;
+
         }
 
-        .filtres {
+
+        h2 {
+
+            margin-top: 0;
+
+        }
+
+
+        /* =========================
+           MESSAGES
+        ========================= */
+
+        .message {
+
+            padding: 15px;
+
+            margin-bottom: 20px;
+
+            border-radius: 8px;
+
+            font-weight: bold;
+
+        }
+
+
+        .message.success {
+
+            background: #d4edda;
+
+            color: #155724;
+
+            border: 1px solid #c3e6cb;
+
+        }
+
+
+        .message.error {
+
+            background: #f8d7da;
+
+            color: #721c24;
+
+            border: 1px solid #f5c6cb;
+
+        }
+
+
+        /* =========================
+           IMPORT + FILTRES
+        ========================= */
+
+        .top-section {
+
+            display: grid;
+
+            grid-template-columns: 1fr 2fr;
+
+            gap: 20px;
+
+            margin-bottom: 25px;
+
+        }
+
+
+        .import-box,
+        .filter-box {
+
             background: white;
-            padding: 20px;
+
+            padding: 22px;
+
             border-radius: 10px;
-            margin-bottom: 25px;
+
+            box-shadow:
+                0 2px 8px rgba(0, 0, 0, 0.08);
+
         }
 
-        .filtres select,
-        .filtres button {
-            padding: 10px;
-            margin-right: 10px;
-            margin-bottom: 10px;
+
+        .import-box h2,
+        .filter-box h2 {
+
+            margin-bottom: 18px;
+
         }
+
+
+        /* =========================
+           IMPORTATION
+        ========================= */
+
+        .import-box p {
+
+            color: #666;
+
+            font-size: 14px;
+
+        }
+
+
+        .import-box input[type="file"] {
+
+            display: block;
+
+            width: 100%;
+
+            margin-top: 15px;
+
+            margin-bottom: 15px;
+
+        }
+
+
+        /* =========================
+           FILTRES
+        ========================= */
+
+        .filters {
+
+            display: flex;
+
+            gap: 12px;
+
+            align-items: end;
+
+            margin-bottom: 15px;
+
+        }
+
+
+        .filters div {
+
+            flex: 1;
+
+        }
+
+
+        .filters label {
+
+            display: block;
+
+            margin-bottom: 6px;
+
+            font-size: 14px;
+
+            font-weight: bold;
+
+        }
+
+
+        .filters select {
+
+            width: 100%;
+
+            padding: 10px;
+
+            border: 1px solid #ccc;
+
+            border-radius: 6px;
+
+            background: white;
+
+        }
+
+
+        /* =========================
+           BOUTONS
+        ========================= */
+
+        button {
+
+            padding: 10px 20px;
+
+            border: none;
+
+            border-radius: 6px;
+
+            cursor: pointer;
+
+            font-weight: bold;
+
+        }
+
+
+        .import-box button {
+
+            background: #198754;
+
+            color: white;
+
+        }
+
+
+        .filter-box button {
+
+            background: #0d6efd;
+
+            color: white;
+
+        }
+
+
+        button:hover {
+
+            opacity: 0.9;
+
+        }
+
+
+        /* Masquer le bouton Analyser puisqu'il n'est plus nécessaire */
+        .filter-box form > button {
+            display: none;
+        }
+
+
+        /* =========================
+           CARTES STATISTIQUES
+        ========================= */
 
         .cards {
+
             display: grid;
+
             grid-template-columns:
                 repeat(4, 1fr);
+
             gap: 20px;
+
             margin-bottom: 30px;
+
         }
+
 
         .card {
+
             background: white;
+
             padding: 20px;
+
             border-radius: 10px;
+
             text-align: center;
+
             box-shadow:
-                0 2px 8px rgba(0,0,0,0.08);
+                0 2px 8px rgba(0, 0, 0, 0.08);
+
         }
+
 
         .card h2 {
+
             margin: 0;
+
             font-size: 30px;
+
         }
+
 
         .card p {
+
             color: #666;
+
+            margin-bottom: 0;
+
         }
+
+
+        /* =========================
+           CLASSEMENT
+        ========================= */
 
         .table-container {
+
             background: white;
+
             padding: 20px;
+
             border-radius: 10px;
+
+            box-shadow:
+                0 2px 8px rgba(0, 0, 0, 0.08);
+
         }
 
-        table {
-            width: 100%;
-            border-collapse: collapse;
+
+        .table-container h2 {
+
+            margin-bottom: 20px;
+
         }
+
+
+        .table-wrapper {
+
+            overflow-x: auto;
+
+        }
+
+
+        table {
+
+            width: 100%;
+
+            border-collapse: collapse;
+
+        }
+
 
         th,
         td {
+
             padding: 12px;
+
             border-bottom: 1px solid #ddd;
+
             text-align: left;
+
         }
 
+
         th {
+
             background: #f1f1f1;
+
+        }
+
+
+        tr:hover {
+
+            background: #f8f9fa;
+
+        }
+
+
+        /* =========================
+           MOYENNE
+        ========================= */
+
+        .moyenne {
+
+            font-weight: bold;
+
+        }
+
+
+        /* =========================
+           RESPONSIVE
+        ========================= */
+
+        @media (max-width: 1100px) {
+
+            .cards {
+
+                grid-template-columns:
+                    repeat(2, 1fr);
+
+            }
+
+        }
+
+
+        @media (max-width: 900px) {
+
+            body {
+
+                padding: 20px;
+
+            }
+
+
+            .top-section {
+
+                grid-template-columns: 1fr;
+
+            }
+
+
+            .filters {
+
+                flex-direction: column;
+
+                align-items: stretch;
+
+            }
+
+
+            .filters div {
+
+                width: 100%;
+
+            }
+
+        }
+
+
+        @media (max-width: 600px) {
+
+            body {
+
+                padding: 15px;
+
+            }
+
+
+            .cards {
+
+                grid-template-columns: 1fr;
+
+            }
+
+
+            .import-box,
+            .filter-box,
+            .table-container {
+
+                padding: 15px;
+
+            }
+
         }
 
     </style>
+
 </head>
 
 
 <body>
 
-<h1>📊 Tableau de bord scolaire</h1>
+
+<!-- =========================
+     TITRE
+========================= -->
+
+<h1>
+    📊 Tableau de bord analyse scolaire
+</h1>
 
 
-<!-- FILTRES -->
+<!-- =========================
+     MESSAGES
+========================= -->
 
-<div class="filtres">
+{% if messages %}
 
-    <form method="GET">
+    {% for message in messages %}
 
-        <select name="annee">
+        <div class="message {{ message.tags }}">
 
-            <option value="">
-                Toutes les années
-            </option>
+            {{ message }}
 
-            {% for annee in annees %}
+        </div>
 
-                <option
-                    value="{{ annee.id }}"
-                    {% if annee_selectionnee == annee.id|stringformat:"s" %}
-                        selected
-                    {% endif %}
+    {% endfor %}
+
+{% endif %}
+
+
+<!-- =========================
+     IMPORTATION + FILTRES
+========================= -->
+
+<div class="top-section">
+
+
+    <!-- IMPORTATION -->
+
+    <div class="import-box">
+
+        <h2>
+            📥 Importer les résultats
+        </h2>
+
+
+        <p>
+            Sélectionnez votre fichier Excel
+            contenant les résultats scolaires.
+        </p>
+
+
+        <form
+            method="POST"
+            enctype="multipart/form-data"
+        >
+
+            {% csrf_token %}
+
+            {{ form.as_p }}
+
+
+            <button type="submit">
+
+                Importer le fichier
+
+            </button>
+
+        </form>
+
+    </div>
+
+
+    <!-- FILTRES -->
+
+    <div class="filter-box">
+
+        <h2>
+            🔎 Analyser les résultats
+        </h2>
+
+
+        <!-- Le formulaire s'envoie automatiquement dès qu'un champ change -->
+        <form method="GET" id="filterForm">
+
+
+            <div class="filters">
+
+
+                <!-- ANNÉE -->
+                <div>
+
+                    <label for="annee">
+
+                        Année scolaire
+
+                    </label>
+
+
+                    <select
+                        name="annee"
+                        id="annee"
+                        onchange="document.getElementById('filterForm').submit();"
+                    >
+
+                        <option value="">
+
+                            Toutes les années
+
+                        </option>
+
+
+                        {% for annee in annees %}
+
+                            <option
+                                value="{{ annee.id }}"
+
+                                {% if annee_selectionnee == annee.id|stringformat:"s" %}
+
+                                    selected
+
+                                {% endif %}
+                            >
+
+                                {{ annee.nom }}
+
+                            </option>
+
+                        {% endfor %}
+
+                    </select>
+
+                </div>
+
+                <!-- NIVEAU -->
+                <div>
+
+                <label for="niveau">
+
+                    Niveau
+
+                </label>
+
+
+                <select
+                    name="niveau"
+                    id="niveau"
+                    onchange="document.getElementById('filterForm').submit();"
                 >
-                    {{ annee.nom }}
-                </option>
 
-            {% endfor %}
+                    <option value="">
 
-        </select>
+                        Tous les niveaux
 
-
-        <select name="classe">
-
-            <option value="">
-                Toutes les classes
-            </option>
-
-            {% for classe in classes %}
-
-                <option
-                    value="{{ classe.id }}"
-                    {% if classe_selectionnee == classe.id|stringformat:"s" %}
-                        selected
-                    {% endif %}
-                >
-                    {{ classe.nom }}
-                </option>
-
-            {% endfor %}
-
-        </select>
+                    </option>
 
 
-        <select name="trimestre">
+                    {% for niveau in niveaux %}
 
-            <option value="">
-                Tous les trimestres
-            </option>
+                        <option
+                            value="{{ niveau }}"
 
-            <option
-                value="T1"
-                {% if trimestre_selectionne == "T1" %}
-                    selected
-                {% endif %}
-            >
-                Trimestre 1
-            </option>
+                            {% if niveau_selectionne == niveau %}
 
-            <option
-                value="T2"
-                {% if trimestre_selectionne == "T2" %}
-                    selected
-                {% endif %}
-            >
-                Trimestre 2
-            </option>
+                                selected
 
-            <option
-                value="T3"
-                {% if trimestre_selectionne == "T3" %}
-                    selected
-                {% endif %}
-            >
-                Trimestre 3
-            </option>
+                            {% endif %}
+                        >
 
-        </select>
+                            {{ niveau }}
+
+                        </option>
+
+                    {% endfor %}
+
+                </select>
+
+                </div>
+                <!-- CLASSE -->
+
+                <div>
+
+                    <label for="classe">
+
+                        Classe
+
+                    </label>
 
 
-        <button type="submit">
-            Analyser
-        </button>
+                    <select
+                        name="classe"
+                        id="classe"
+                        onchange="document.getElementById('filterForm').submit();"
+                    >
 
-    </form>
+                        <option value="">
+
+                            Toutes les classes
+
+                        </option>
+
+
+                        {% for classe in classes %}
+
+                            <option
+                                value="{{ classe.id }}"
+
+                                {% if classe_selectionnee == classe.id|stringformat:"s" %}
+
+                                    selected
+
+                                {% endif %}
+                            >
+
+                                {{ classe.nom }}
+
+                            </option>
+
+                        {% endfor %}
+
+                    </select>
+
+                </div>
+
+
+                <!-- TRIMESTRE -->
+
+                <div>
+
+                    <label for="trimestre">
+
+                        Trimestre
+
+                    </label>
+
+
+                    <select
+                        name="trimestre"
+                        id="trimestre"
+                        onchange="document.getElementById('filterForm').submit();"
+                    >
+
+                        <option value="">
+
+                            Tous les trimestres
+
+                        </option>
+
+
+                        <option
+                            value="T1"
+
+                            {% if trimestre_selectionne == "T1" %}
+
+                                selected
+
+                            {% endif %}
+                        >
+
+                            Trimestre 1
+
+                        </option>
+
+
+                        <option
+                            value="T2"
+
+                            {% if trimestre_selectionne == "T2" %}
+
+                                selected
+
+                            {% endif %}
+                        >
+
+                            Trimestre 2
+
+                        </option>
+
+
+                        <option
+                            value="T3"
+
+                            {% if trimestre_selectionne == "T3" %}
+
+                                selected
+
+                            {% endif %}
+                        >
+
+                            Trimestre 3
+
+                        </option>
+
+                    </select>
+
+                </div>
+
+
+            </div>
+
+
+            <!-- Le bouton est caché car les filtres sont automatiques -->
+            <button type="submit" style="display:none;">
+
+                Analyser
+
+            </button>
+
+
+        </form>
+
+    </div>
 
 </div>
 
 
-<!-- STATISTIQUES -->
+<!-- =========================
+     STATISTIQUES
+========================= -->
 
 <div class="cards">
 
+
+    <!-- NOMBRE D'ÉLÈVES -->
+
     <div class="card">
 
         <h2>
+
             {{ statistiques.nombre_eleves|default:0 }}
+
         </h2>
 
         <p>
+
             Élèves
+
         </p>
 
     </div>
 
 
+    <!-- MOYENNE -->
+
     <div class="card">
 
         <h2>
+
             {{ statistiques.moyenne_classe|floatformat:2|default:"0.00" }}
+
         </h2>
 
         <p>
+
             Moyenne de la classe
+
         </p>
 
     </div>
 
 
+    <!-- MEILLEURE MOYENNE -->
+
     <div class="card">
 
         <h2>
+
             {{ statistiques.meilleure_moyenne|floatformat:2|default:"0.00" }}
+
         </h2>
 
         <p>
+
             Meilleure moyenne
+
         </p>
 
     </div>
 
+
+    <!-- PLUS FAIBLE -->
 
     <div class="card">
 
         <h2>
+
             {{ statistiques.plus_faible_moyenne|floatformat:2|default:"0.00" }}
+
         </h2>
 
         <p>
+
             Plus faible moyenne
+
         </p>
 
     </div>
+
 
 </div>
 
 
-<!-- CLASSEMENT -->
+<!-- =========================
+     CLASSEMENT
+========================= -->
 
 <div class="table-container">
 
+
     <h2>
+
         🏆 Classement des élèves
+
     </h2>
 
 
-    <table>
-
-        <thead>
-
-            <tr>
-
-                <th>
-                    Rang
-                </th>
-
-                <th>
-                    Matricule
-                </th>
-
-                <th>
-                    Élève
-                </th>
-
-                <th>
-                    Classe
-                </th>
-
-                <th>
-                    Moyenne
-                </th>
-
-            </tr>
-
-        </thead>
+    <div class="table-wrapper">
 
 
-        <tbody>
+        <table>
 
-            {% for resultat in classement %}
+
+            <thead>
 
                 <tr>
 
-                    <td>
-                        {{ resultat.rang|default:"-" }}
-                    </td>
+                    <th>
+                        Rang
+                    </th>
 
-                    <td>
-                        {{ resultat.eleve.matricule }}
-                    </td>
+                    <th>
+                        Matricule
+                    </th>
 
-                    <td>
-                        {{ resultat.eleve.nom }}
-                        {{ resultat.eleve.prenoms }}
-                    </td>
+                    <th>
+                        Élève
+                    </th>
 
-                    <td>
-                        {{ resultat.classe.nom }}
-                    </td>
+                    <th>
+                        Classe
+                    </th>
 
-                    <td>
-                        <strong>
-                            {{ resultat.moyenne_trimestrielle }}
-                        </strong>
-                    </td>
+                    <th>
+                        Moyenne
+                    </th>
 
                 </tr>
 
-            {% empty %}
+            </thead>
 
-                <tr>
 
-                    <td colspan="5">
-                        Aucun résultat trouvé.
-                    </td>
+            <tbody>
 
-                </tr>
 
-            {% endfor %}
+                {% for resultat in classement %}
 
-        </tbody>
 
-    </table>
+                    <tr>
+
+
+                        <td>
+
+                            {{ resultat.rang|default:"-" }}
+
+                        </td>
+
+
+                        <td>
+
+                            {{ resultat.eleve.matricule }}
+
+                        </td>
+
+
+                        <td>
+
+                            {{ resultat.eleve.nom }}
+
+                            {{ resultat.eleve.prenoms }}
+
+                        </td>
+
+
+                        <td>
+
+                            {{ resultat.classe.nom }}
+
+                        </td>
+
+
+                        <td class="moyenne">
+
+                            {{ resultat.moyenne_trimestrielle|default:"-" }}
+
+                        </td>
+
+
+                    </tr>
+
+
+                {% empty %}
+
+
+                    <tr>
+
+                        <td colspan="5">
+
+                            Aucun résultat trouvé.
+
+                        </td>
+
+                    </tr>
+
+
+                {% endfor %}
+
+
+            </tbody>
+
+
+        </table>
+
+
+    </div>
+
 
 </div>
+
 
 </body>
 

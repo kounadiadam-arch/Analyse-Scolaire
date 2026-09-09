@@ -5,13 +5,19 @@ from . import views
 
 urlpatterns = [
     path(
-        "importer/",
-        views.importer_excel,
-        name="importer_excel"
-    ),
+        "",
+            views.dashboard,
+        ),
+
     path(
         "dashboard/",
         views.dashboard,
         name="dashboard"
     ),
+    
+    path(
+    "statistiques-matieres/",
+    views.statistiques_matieres,
+    name="statistiques_matieres"
+),
 ]

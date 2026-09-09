@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <title>
+        Statistiques par matière
+    </title>
+
+    <style>
+
+        body {
+            font-family: Arial, sans-serif;
+            background: #f4f6f9;
+            margin: 0;
+            padding: 30px;
+        }
+
+        h1 {
+            margin-bottom: 25px;
+        }
+
+        .filtres {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 25px;
+        }
+
+        select,
+        button {
+            padding: 10px;
+            margin-right: 10px;
+        }
+
+        .cards {
+            display: grid;
+            grid-template-columns:
+                repeat(2, 1fr);
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .card {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow:
+                0 2px 8px rgba(0,0,0,0.08);
+        }
+
+        .card h2 {
+            margin-top: 0;
+        }
+
+        .table-container {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th,
+        td {
+            padding: 12px;
+            border-bottom:
+                1px solid #ddd;
+            text-align: left;
+        }
+
+        th {
+            background: #f1f1f1;
+        }
+
+    </style>
+
+</head>
+
+
+<body>
+
+<h1>
+    📚 Statistiques par matière
+</h1>
+
+
+<!-- FILTRES -->
+
+<div class="filtres">
+
+    <form method="GET">
+
+        <select name="annee">
+
+            <option value="">
+                Toutes les années
+            </option>
+
+            {% for annee in annees %}
+
+                <option
+                    value="{{ annee.id }}"
+                    {% if annee_selectionnee == annee.id|stringformat:"s" %}
+                        selected
+                    {% endif %}
+                >
+
+                    {{ annee.nom }}
+
+                </option>
+
+            {% endfor %}
+
+        </select>
+
+
+        <select name="classe">
+
+            <option value="">
+                Toutes les classes
+            </option>
+
+            {% for classe in classes %}
+
+                <option
+                    value="{{ classe.id }}"
+                    {% if classe_selectionnee == classe.id|stringformat:"s" %}
+                        selected
+                    {% endif %}
+                >
+
+                    {{ classe.nom }}
+
+                </option>
+
+            {% endfor %}
+
+        </select>
+
+
+        <select name="trimestre">
+
+            <option value="">
+                Tous les trimestres
+            </option>
+
+            <option
+                value="T1"
+                {% if trimestre_selectionne == "T1" %}
+                    selected
+                {% endif %}
+            >
+                Trimestre 1
+            </option>
+
+            <option
+                value="T2"
+                {% if trimestre_selectionne == "T2" %}
+                    selected
+                {% endif %}
+            >
+                Trimestre 2
+            </option>
+
+            <option
+                value="T3"
+                {% if trimestre_selectionne == "T3" %}
+                    selected
+                {% endif %}
+            >
+                Trimestre 3
+            </option>
+
+        </select>
+
+
+        <button type="submit">
+            Analyser
+        </button>
+
+    </form>
+
+</div>
+
+
+<!-- MEILLEURES / PLUS FAIBLES MATIERES -->
+
+<div class="cards">
+
+    <div class="card">
+
+        <h2>
+            🏆 Meilleure matière
+        </h2>
+
+        {% if meilleure_matiere %}
+
+            <strong>
+                {{ meilleure_matiere.nom }}
+            </strong>
+
+            <p>
+                Moyenne :
+                {{ meilleure_matiere.moyenne }}
+            </p>
+
+        {% else %}
+
+            <p>
+                Aucune donnée disponible.
+            </p>
+
+        {% endif %}
+
+    </div>
+
+
+    <div class="card">
+
+        <h2>
+            📉 Matière la plus faible
+        </h2>
+
+        {% if plus_faible_matiere %}
+
+            <strong>
+                {{ plus_faible_matiere.nom }}
+            </strong>
+
+            <p>
+                Moyenne :
+                {{ plus_faible_matiere.moyenne }}
+            </p>
+
+        {% else %}
+
+            <p>
+                Aucune donnée disponible.
+            </p>
+
+        {% endif %}
+
+    </div>
+
+</div>
+
+
+<!-- TABLEAU -->
+
+<div class="table-container">
+
+    <h2>
+        Analyse des matières
+    </h2>
+
+
+    <table>
+
+        <thead>
+
+            <tr>
+
+                <th>
+                    Matière
+                </th>
+
+                <th>
+                    Moyenne
+                </th>
+
+                <th>
+                    Élèves évalués
+                </th>
+
+                <th>
+                    Taux de réussite
+                </th>
+
+            </tr>
+
+        </thead>
+
+
+        <tbody>
+
+            {% for matiere in statistiques_matieres %}
+
+                <tr>
+
+                    <td>
+                        <strong>
+                            {{ matiere.nom }}
+                        </strong>
+                    </td>
+
+                    <td>
+
+                        {% if matiere.moyenne != None %}
+
+                            {{ matiere.moyenne }}
+
+                        {% else %}
+
+                            -
+
+                        {% endif %}
+
+                    </td>
+
+                    <td>
+                        {{ matiere.nombre }}
+                    </td>
+
+                    <td>
+                        {{ matiere.taux_reussite }} %
+                    </td>
+
+                </tr>
+
+            {% empty %}
+
+                <tr>
+
+                    <td colspan="4">
+                        Aucune donnée disponible.
+                    </td>
+
+                </tr>
+
+            {% endfor %}
+
+        </tbody>
+
+    </table>
+
+</div>
+
+
+</body>
+
+</html>
