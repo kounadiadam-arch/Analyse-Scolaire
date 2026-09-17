@@ -127,6 +127,54 @@
         }
 
 
+        .filter-box-header {
+
+            display: flex;
+
+            align-items: center;
+
+            justify-content: space-between;
+
+            gap: 15px;
+
+        }
+
+
+        .filter-box-header h2 {
+
+            margin-bottom: 0;
+
+        }
+
+
+        .btn-export {
+
+            display: inline-block;
+
+            padding: 10px 18px;
+
+            border-radius: 6px;
+
+            background: #198754;
+
+            color: white;
+
+            text-decoration: none;
+
+            font-weight: bold;
+
+            white-space: nowrap;
+
+        }
+
+
+        .btn-export:hover {
+
+            opacity: 0.9;
+
+        }
+
+
         /* =========================
            IMPORTATION
         ========================= */
@@ -335,6 +383,69 @@
         .table-wrapper {
 
             overflow-x: auto;
+
+        }
+
+
+        /* =========================
+           PAGINATION
+        ========================= */
+
+        .pagination {
+
+            display: flex;
+
+            align-items: center;
+
+            justify-content: center;
+
+            gap: 15px;
+
+            margin-top: 20px;
+
+        }
+
+
+        .pagination-link {
+
+            padding: 8px 16px;
+
+            border-radius: 6px;
+
+            background: #0d6efd;
+
+            color: white;
+
+            text-decoration: none;
+
+            font-weight: bold;
+
+        }
+
+
+        .pagination-link:hover {
+
+            opacity: 0.9;
+
+        }
+
+
+        .pagination-link.disabled {
+
+            background: #e9ecef;
+
+            color: #adb5bd;
+
+            cursor: not-allowed;
+
+        }
+
+
+        .pagination-info {
+
+            color: #555;
+
+            font-weight: bold;
 
         }
 
@@ -666,6 +777,22 @@
 
             }
 
+
+            .filter-box-header {
+
+                flex-direction: column;
+
+                align-items: stretch;
+
+            }
+
+
+            .btn-export {
+
+                text-align: center;
+
+            }
+
         }
 
     </style>
@@ -751,9 +878,20 @@
 
     <div class="filter-box">
 
-        <h2>
-            🔎 Analyser les résultats
-        </h2>
+        <div class="filter-box-header">
+
+            <h2>
+                🔎 Analyser les résultats
+            </h2>
+
+            <a
+                href="{% url 'export_statistiques_excel' %}?{{ querystring_classement }}"
+                class="btn-export"
+            >
+                📊 Exporter en Excel
+            </a>
+
+        </div>
 
 
         <!-- Le formulaire s'envoie automatiquement dès qu'un champ change -->
@@ -1272,7 +1410,7 @@
      CLASSEMENT
 ========================= -->
 
-<div class="table-container">
+<div class="table-container" id="classement">
 
 
     <h2>
@@ -1392,7 +1530,128 @@
     </div>
 
 
+    <!-- ========= PAGINATION DU CLASSEMENT ========= -->
+
+    {% if classement.paginator.num_pages > 1 %}
+
+        <div class="pagination">
+
+            {% if classement.has_previous %}
+
+                <a
+                    href="?{% if querystring_classement %}{{ querystring_classement }}&{% endif %}page_classement={{ classement.previous_page_number }}#classement"
+                    class="pagination-link"
+                >
+                    &laquo; Précédent
+                </a>
+
+            {% else %}
+
+                <span class="pagination-link disabled">
+                    &laquo; Précédent
+                </span>
+
+            {% endif %}
+
+            <span class="pagination-info">
+                Page {{ classement.number }} sur {{ classement.paginator.num_pages }}
+            </span>
+
+            {% if classement.has_next %}
+
+                <a
+                    href="?{% if querystring_classement %}{{ querystring_classement }}&{% endif %}page_classement={{ classement.next_page_number }}#classement"
+                    class="pagination-link"
+                >
+                    Suivant &raquo;
+                </a>
+
+            {% else %}
+
+                <span class="pagination-link disabled">
+                    Suivant &raquo;
+                </span>
+
+            {% endif %}
+
+        </div>
+
+    {% endif %}
+
+
 </div>
+
+
+<script>
+
+    // Si la page a été chargée avec l'ancre #classement (ex. lien
+    // de pagination sans JavaScript), on la retire de l'adresse
+    // pour ne pas perturber les futurs changements de filtres.
+    if (window.location.hash === "#classement") {
+        history.replaceState(
+            {}, "", window.location.pathname + window.location.search
+        );
+    }
+
+    // Empêche le formulaire de filtres d'hériter d'une éventuelle
+    // ancre #classement présente dans l'URL (ex. après une
+    // pagination), afin que changer un filtre ne fasse pas défiler
+    // la page vers le tableau de classement.
+    var formulaireFiltres = document.getElementById("filterForm");
+    if (formulaireFiltres) {
+        formulaireFiltres.action = window.location.pathname;
+    }
+
+    // Pagination du classement sans rechargement de page,
+    // pour que le tableau reste fixe (pas de saut de scroll).
+    document.addEventListener("click", function (e) {
+
+        var lien = e.target.closest(
+            "#classement .pagination-link[href]"
+        );
+
+        if (!lien) {
+            return;
+        }
+
+        e.preventDefault();
+
+        fetch(lien.href)
+            .then(function (reponse) {
+                return reponse.text();
+            })
+            .then(function (html) {
+
+                var parser = new DOMParser();
+                var doc = parser.parseFromString(html, "text/html");
+
+                var nouveauBloc = doc.getElementById("classement");
+                var ancienBloc = document.getElementById("classement");
+
+                if (nouveauBloc && ancienBloc) {
+                    ancienBloc.replaceWith(nouveauBloc);
+                }
+
+                var url = new URL(lien.href, window.location.href);
+                url.hash = "";
+
+                history.pushState({}, "", url.toString());
+            })
+            .catch(function () {
+                // En cas de problème réseau, on retombe sur une
+                // navigation classique.
+                window.location.href = lien.href;
+            });
+
+    });
+
+    // Si l'utilisateur revient en arrière après une pagination
+    // AJAX, on recharge simplement la page pour rester cohérent.
+    window.addEventListener("popstate", function () {
+        window.location.reload();
+    });
+
+</script>
 
 
 </body>

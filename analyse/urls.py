@@ -19,5 +19,11 @@ urlpatterns = [
     "statistiques-matieres/",
     views.statistiques_matieres,
     name="statistiques_matieres"
-),
+    ),
+    path(
+        "export/excel/",
+        views.exporter_statistiques_excel,
+        name="export_statistiques_excel"
+    ),
+
 ]

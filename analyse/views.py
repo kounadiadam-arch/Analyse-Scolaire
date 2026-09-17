@@ -1,9 +1,17 @@
+import io
 import re
 import unicodedata
+from datetime import datetime
 from decimal import Decimal
 
 from django.contrib import messages
+from django.core.paginator import Paginator
+from django.http import HttpResponse
 from django.shortcuts import render
+
+from openpyxl import Workbook
+from openpyxl.styles import Alignment, Border, Font, Side
+from openpyxl.utils import get_column_letter
 
 from .forms import ImportExcelForm
 from .services.importer import importer_fichier_excel
@@ -17,28 +25,6 @@ from .models import (
 )
 
 
-# =====================================================================
-# STATISTIQUES PAR NIVEAU (tableau type "STAT_1")
-# =====================================================================
-#
-# Ces fonctions construisent le tableau récapitulatif par niveau
-# (effectifs classés / non classés par sexe, répartition par tranche
-# de moyenne, moyenne par niveau) affiché sur le dashboard, en
-# respectant les filtres déjà appliqués (année, classe, trimestre,
-# niveau).
-#
-# Hypothèses retenues (à ajuster si besoin) :
-#   - "Effectif classé"      = élèves ayant une moyenne_trimestrielle
-#                               renseignée et différente de 0.
-#   - "Effectif non classé"  = élèves sans moyenne_trimestrielle ou
-#                               avec une moyenne_trimestrielle égale à 0.
-#   - Les pourcentages des tranches de moyenne sont calculés sur la
-#     base de l'effectif classé (T) du niveau concerné.
-#   - "F" = genre 'F' (Féminin), "G" = genre 'M' (Masculin/Garçon).
-#   - Le "1er cycle" regroupe les niveaux 6e/5e/4e/3e, le
-#     "2nd cycle" regroupe tout le reste (2nde, 1ère, Tle...), en se
-#     basant sur les valeurs réelles du champ Classe.niveau, quelle
-#     que soit leur orthographe exacte.
 
 
 def _normaliser(texte):
@@ -579,9 +565,30 @@ def dashboard(request):
 
     )
 
-    classement = resultats.order_by(
+    classement_queryset = resultats.order_by(
         "-moyenne_trimestrielle"
     )
+
+    # -----------------------------
+    # PAGINATION DU CLASSEMENT (10 élèves par page)
+    # -----------------------------
+
+    paginator_classement = Paginator(
+        classement_queryset,
+        10
+    )
+
+    numero_page_classement = request.GET.get("page_classement")
+
+    classement = paginator_classement.get_page(
+        numero_page_classement
+    )
+
+    # Chaîne de requête (filtres actuels) sans le paramètre de page,
+    # pour reconstruire les liens de pagination dans le template.
+    querydict_classement = request.GET.copy()
+    querydict_classement.pop("page_classement", None)
+    querystring_classement = querydict_classement.urlencode()
 
     # -----------------------------
     # TABLEAU STATISTIQUES PAR NIVEAU
@@ -608,6 +615,8 @@ def dashboard(request):
         "resultats": resultats,
 
         "classement": classement,
+
+        "querystring_classement": querystring_classement,
 
         "statistiques": statistiques,
 
@@ -784,3 +793,429 @@ def statistiques_matieres(request):
         "analyse/statistiques_matieres.html",
         context
     )
+
+
+# =====================================================================
+# EXPORT EXCEL DE TOUTES LES STATISTIQUES DU DASHBOARD
+# =====================================================================
+
+POLICE_ENTETE = Font(bold=True, name="Arial")
+ALIGNEMENT_CENTRE = Alignment(horizontal="center", vertical="center")
+
+
+def _ecrire_entetes(feuille, entetes):
+    """Écrit une ligne d'en-têtes stylée (gras, sans couleur) en haut
+    d'une feuille."""
+
+    for colonne, texte in enumerate(entetes, start=1):
+
+        cellule = feuille.cell(row=1, column=colonne, value=texte)
+        cellule.font = POLICE_ENTETE
+        cellule.alignment = ALIGNEMENT_CENTRE
+
+    feuille.freeze_panes = "A2"
+
+
+def _ajuster_largeurs_colonnes(feuille):
+    """Ajuste automatiquement la largeur des colonnes selon leur contenu."""
+
+    for colonne in feuille.columns:
+
+        longueur_max = max(
+            (len(str(cellule.value)) for cellule in colonne if cellule.value is not None),
+            default=10
+        )
+
+        lettre = get_column_letter(colonne[0].column)
+        feuille.column_dimensions[lettre].width = min(longueur_max + 4, 40)
+
+
+# ---- Styles reproduisant la structure des tableaux "par niveau" du
+#      dashboard, sans couleurs (gras + bordures uniquement) ----
+
+POLICE_ENTETE_TABLEAU = Font(bold=True, name="Arial")
+
+BORDURE_FINE = Border(
+    left=Side(style="thin", color="333333"),
+    right=Side(style="thin", color="333333"),
+    top=Side(style="thin", color="333333"),
+    bottom=Side(style="thin", color="333333"),
+)
+
+
+def _cellule_entete_sombre(feuille, ligne, colonne, texte):
+    """Écrit une cellule d'en-tête au style des tableaux "par niveau"
+    du dashboard (gras, centré, bordé, sans couleur)."""
+
+    cellule = feuille.cell(row=ligne, column=colonne, value=texte)
+    cellule.font = POLICE_ENTETE_TABLEAU
+    cellule.alignment = ALIGNEMENT_CENTRE
+    cellule.border = BORDURE_FINE
+
+    return cellule
+
+
+def _remplir_ligne_donnees(feuille, ligne_excel, valeurs, est_total, est_total_general,
+                            colonnes_pourcentage=()):
+    """Écrit une ligne de données, avec les lignes de total en gras
+    (comme les classes CSS total-row / total-general du dashboard),
+    mais sans couleur de fond."""
+
+    for indice_colonne, valeur in enumerate(valeurs, start=1):
+
+        cellule = feuille.cell(row=ligne_excel, column=indice_colonne, value=valeur)
+        cellule.border = BORDURE_FINE
+        cellule.alignment = ALIGNEMENT_CENTRE
+
+        if indice_colonne in colonnes_pourcentage and isinstance(valeur, (int, float)):
+            cellule.value = valeur / 100
+            cellule.number_format = "0.00%"
+
+        if est_total_general or est_total or indice_colonne == 1:
+            cellule.font = Font(bold=True, name="Arial")
+
+
+def _construire_feuille_statistiques_niveaux(feuille, lignes):
+    """Construit la feuille "Statistiques par niveau" en reproduisant
+
+    exactement le tableau du dashboard : en-têtes groupés sur deux
+    lignes, ordre de colonnes F/G/T, pourcentages et mise en
+    évidence des lignes de total."""
+
+    groupes = [
+        ("Effectif classé", ["F", "G", "T"]),
+        ("Effectif non classé", ["F", "G", "T"]),
+        ("MOY TRIMES >= 10", ["F", "G", "T", "%"]),
+        ("08.50 <= MOY TRIMES < 10", ["F", "G", "T", "%"]),
+        ("MOY TRIMES < 08.50", ["F", "G", "T", "%"]),
+    ]
+
+    _cellule_entete_sombre(feuille, 1, 1, "Niveaux")
+    feuille.merge_cells(start_row=1, start_column=1, end_row=2, end_column=1)
+
+    _cellule_entete_sombre(feuille, 1, 2, "Nombre de classes")
+    feuille.merge_cells(start_row=1, start_column=2, end_row=2, end_column=2)
+
+    colonne = 3
+    colonnes_pourcentage = []
+
+    for titre_groupe, sous_colonnes in groupes:
+
+        largeur = len(sous_colonnes)
+
+        _cellule_entete_sombre(feuille, 1, colonne, titre_groupe)
+        feuille.merge_cells(
+            start_row=1, start_column=colonne,
+            end_row=1, end_column=colonne + largeur - 1
+        )
+
+        for decalage, sous_titre in enumerate(sous_colonnes):
+            _cellule_entete_sombre(feuille, 2, colonne + decalage, sous_titre)
+            if sous_titre == "%":
+                colonnes_pourcentage.append(colonne + decalage)
+
+        colonne += largeur
+
+    _cellule_entete_sombre(feuille, 1, colonne, "Moyenne par niveau")
+    feuille.merge_cells(start_row=1, start_column=colonne, end_row=2, end_column=colonne)
+
+    nombre_colonnes = colonne
+
+    ligne_excel = 3
+
+    for ligne in lignes:
+
+        valeurs = [
+            ligne["niveau"],
+            ligne["nombre_classes"],
+            ligne["classe_f"], ligne["classe_g"], ligne["classe_t"],
+            ligne["non_classe_f"], ligne["non_classe_g"], ligne["non_classe_t"],
+            ligne["sup10_f"], ligne["sup10_g"], ligne["sup10_t"], ligne["sup10_pct"],
+            ligne["moy_f"], ligne["moy_g"], ligne["moy_t"], ligne["moy_pct"],
+            ligne["inf_f"], ligne["inf_g"], ligne["inf_t"], ligne["inf_pct"],
+            ligne["moyenne_niveau"] if ligne["moyenne_niveau"] is not None else "-",
+        ]
+
+        _remplir_ligne_donnees(
+            feuille,
+            ligne_excel,
+            valeurs,
+            est_total=ligne.get("is_total", False),
+            est_total_general=(ligne["niveau"] == "Total général"),
+            colonnes_pourcentage=colonnes_pourcentage,
+        )
+
+        ligne_excel += 1
+
+    feuille.freeze_panes = "C3"
+
+    feuille.column_dimensions["A"].width = 22
+    for indice_colonne in range(2, nombre_colonnes + 1):
+        feuille.column_dimensions[get_column_letter(indice_colonne)].width = 12
+
+
+def _construire_feuille_effectifs_niveaux(feuille, lignes):
+    """Construit la feuille "Effectifs" en reproduisant exactement le
+    tableau du dashboard : en-têtes groupés sur deux lignes, ordre
+    de colonnes G/F/Total et mise en évidence des lignes de total."""
+
+    groupes = [
+        ("Effectif", ["G", "F", "Total"]),
+        ("Affectés", ["G", "F", "Total"]),
+        ("Redoublants", ["G", "F", "Total"]),
+    ]
+
+    _cellule_entete_sombre(feuille, 1, 1, "Niveau")
+    feuille.merge_cells(start_row=1, start_column=1, end_row=2, end_column=1)
+
+    colonne = 2
+
+    for titre_groupe, sous_colonnes in groupes:
+
+        largeur = len(sous_colonnes)
+
+        _cellule_entete_sombre(feuille, 1, colonne, titre_groupe)
+        feuille.merge_cells(
+            start_row=1, start_column=colonne,
+            end_row=1, end_column=colonne + largeur - 1
+        )
+
+        for decalage, sous_titre in enumerate(sous_colonnes):
+            _cellule_entete_sombre(feuille, 2, colonne + decalage, sous_titre)
+
+        colonne += largeur
+
+    nombre_colonnes = colonne - 1
+
+    ligne_excel = 3
+
+    for ligne in lignes:
+
+        valeurs = [
+            ligne["niveau"],
+            ligne["effectif_g"], ligne["effectif_f"], ligne["effectif_t"],
+            ligne["affectes_g"], ligne["affectes_f"], ligne["affectes_t"],
+            ligne["redoublants_g"], ligne["redoublants_f"], ligne["redoublants_t"],
+        ]
+
+        _remplir_ligne_donnees(
+            feuille,
+            ligne_excel,
+            valeurs,
+            est_total=ligne.get("is_total", False),
+            est_total_general=(ligne["niveau"] == "Total Général"),
+        )
+
+        ligne_excel += 1
+
+    feuille.freeze_panes = "B3"
+
+    feuille.column_dimensions["A"].width = 22
+    for indice_colonne in range(2, nombre_colonnes + 1):
+        feuille.column_dimensions[get_column_letter(indice_colonne)].width = 12
+
+
+def exporter_statistiques_excel(request):
+    """Exporte, dans un classeur Excel à plusieurs feuilles, l'ensemble
+    des statistiques affichées sur le dashboard (résumé, classement
+    complet des élèves, tableau par niveau, tableau des effectifs),
+    en respectant les filtres actuellement appliqués (année, niveau,
+    classe, trimestre)."""
+
+    # -----------------------------
+    # FILTRES (identiques à la vue dashboard)
+    # -----------------------------
+
+    annee_id = request.GET.get("annee")
+    classe_id = request.GET.get("classe")
+    trimestre = request.GET.get("trimestre")
+    niveau = request.GET.get("niveau")
+
+    resultats = Resultat.objects.select_related(
+        "eleve",
+        "annee_scolaire",
+        "classe"
+    )
+
+    if niveau:
+        resultats = resultats.filter(classe__niveau=niveau)
+
+    if annee_id:
+        resultats = resultats.filter(annee_scolaire_id=annee_id)
+
+    if classe_id:
+        resultats = resultats.filter(classe_id=classe_id)
+
+    if trimestre:
+        resultats = resultats.filter(trimestre=trimestre)
+
+    # -----------------------------
+    # STATISTIQUES (mêmes calculs que la vue dashboard)
+    # -----------------------------
+
+    resultats_avec_moyenne = resultats.exclude(
+        moyenne_trimestrielle=0
+    )
+
+    statistiques = resultats.aggregate(
+        nombre_eleves=Count("id"),
+    )
+
+    statistiques.update(
+        resultats_avec_moyenne.aggregate(
+            moyenne_classe=Avg("moyenne_trimestrielle"),
+            meilleure_moyenne=Max("moyenne_trimestrielle"),
+            plus_faible_moyenne=Min("moyenne_trimestrielle"),
+        )
+    )
+
+    classement = resultats.order_by(
+        "-moyenne_trimestrielle"
+    )
+
+    tableau_statistiques_niveaux = calculer_tableau_statistiques_niveaux(
+        resultats
+    )
+
+    tableau_effectifs_niveaux = calculer_tableau_effectifs_niveaux(
+        resultats
+    )
+
+    # -----------------------------
+    # LIBELLÉS DES FILTRES APPLIQUÉS (pour le rappel dans le fichier)
+    # -----------------------------
+
+    annee_nom = "Toutes les années"
+    if annee_id:
+        annee_obj = AnneeScolaire.objects.filter(id=annee_id).first()
+        annee_nom = annee_obj.nom if annee_obj else annee_id
+
+    classe_nom = "Toutes les classes"
+    if classe_id:
+        classe_obj = Classe.objects.filter(id=classe_id).first()
+        classe_nom = classe_obj.nom if classe_obj else classe_id
+
+    niveau_nom = niveau or "Tous les niveaux"
+    trimestre_nom = trimestre or "Tous les trimestres"
+
+    # -----------------------------
+    # CONSTRUCTION DU CLASSEUR EXCEL
+    # -----------------------------
+
+    classeur = Workbook()
+
+    # ---- Feuille "Résumé" ----
+
+    feuille_resume = classeur.active
+    feuille_resume.title = "Résumé"
+
+    _ecrire_entetes(feuille_resume, ["Indicateur", "Valeur"])
+
+    moyenne_classe = statistiques.get("moyenne_classe")
+    meilleure_moyenne = statistiques.get("meilleure_moyenne")
+    plus_faible_moyenne = statistiques.get("plus_faible_moyenne")
+
+    lignes_resume = [
+        ("Date d'export", datetime.now().strftime("%d/%m/%Y %H:%M")),
+        ("Année scolaire", annee_nom),
+        ("Niveau", niveau_nom),
+        ("Classe", classe_nom),
+        ("Trimestre", trimestre_nom),
+        ("Nombre d'élèves", statistiques.get("nombre_eleves") or 0),
+        (
+            "Moyenne générale",
+            round(float(moyenne_classe), 2)
+            if moyenne_classe is not None else "-"
+        ),
+        (
+            "Meilleure moyenne",
+            round(float(meilleure_moyenne), 2)
+            if meilleure_moyenne is not None else "-"
+        ),
+        (
+            "Plus faible moyenne",
+            round(float(plus_faible_moyenne), 2)
+            if plus_faible_moyenne is not None else "-"
+        ),
+    ]
+
+    for indice, (libelle, valeur) in enumerate(lignes_resume, start=2):
+        feuille_resume.cell(row=indice, column=1, value=libelle).font = Font(
+            bold=True, name="Arial"
+        )
+        feuille_resume.cell(row=indice, column=2, value=valeur)
+
+    _ajuster_largeurs_colonnes(feuille_resume)
+
+    # ---- Feuille "Classement" ----
+
+    feuille_classement = classeur.create_sheet("Classement")
+
+    _ecrire_entetes(
+        feuille_classement,
+        ["Rang", "Matricule", "Nom", "Prénoms", "Classe", "Niveau", "Moyenne"]
+    )
+
+    rang = 0
+
+    for indice, resultat in enumerate(classement, start=2):
+
+        moyenne = resultat.moyenne_trimestrielle
+        est_classe = moyenne not in (None, 0)
+
+        if est_classe:
+            rang += 1
+
+        feuille_classement.cell(row=indice, column=1, value=rang if est_classe else "-")
+        feuille_classement.cell(row=indice, column=2, value=resultat.eleve.matricule)
+        feuille_classement.cell(row=indice, column=3, value=resultat.eleve.nom)
+        feuille_classement.cell(row=indice, column=4, value=resultat.eleve.prenoms)
+        feuille_classement.cell(row=indice, column=5, value=resultat.classe.nom)
+        feuille_classement.cell(row=indice, column=6, value=resultat.classe.niveau)
+        feuille_classement.cell(
+            row=indice,
+            column=7,
+            value=float(moyenne) if est_classe else None
+        )
+
+    _ajuster_largeurs_colonnes(feuille_classement)
+
+    # ---- Feuille "Statistiques par niveau" (identique au dashboard) ----
+
+    feuille_niveaux = classeur.create_sheet("Statistiques par niveau")
+
+    _construire_feuille_statistiques_niveaux(
+        feuille_niveaux,
+        tableau_statistiques_niveaux
+    )
+
+    # ---- Feuille "Effectifs" (identique au dashboard) ----
+
+    feuille_effectifs = classeur.create_sheet("Effectifs")
+
+    _construire_feuille_effectifs_niveaux(
+        feuille_effectifs,
+        tableau_effectifs_niveaux
+    )
+
+    # -----------------------------
+    # RÉPONSE HTTP (téléchargement du fichier)
+    # -----------------------------
+
+    tampon = io.BytesIO()
+    classeur.save(tampon)
+    tampon.seek(0)
+
+    horodatage = datetime.now().strftime("%Y%m%d_%H%M")
+    nom_fichier = f"statistiques_{horodatage}.xlsx"
+
+    reponse = HttpResponse(
+        tampon.getvalue(),
+        content_type=(
+            "application/vnd.openxmlformats-officedocument"
+            ".spreadsheetml.sheet"
+        )
+    )
+    reponse["Content-Disposition"] = f'attachment; filename="{nom_fichier}"'
+
+    return reponse
