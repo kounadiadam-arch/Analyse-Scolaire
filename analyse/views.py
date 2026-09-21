@@ -16,7 +16,7 @@ from openpyxl.utils import get_column_letter
 from .forms import ImportExcelForm
 from .services.importer import importer_fichier_excel
 
-from django.db.models import Avg, Max, Min, Count
+from django.db.models import Avg, Max, Min, Count, Q
 from .models import (
     AnneeScolaire,
     Classe,
@@ -431,6 +431,149 @@ def calculer_tableau_effectifs_niveaux(resultats):
 
 
 
+# =====================================================================
+# STATISTIQUES PAR MATIÈRE
+# =====================================================================
+
+SEUIL_REUSSITE = 10
+
+MATIERES = {
+    "Composition française": "composition_francaise",
+    "Orthographe / Grammaire": "orthographe_grammaire",
+    "Expression orale": "expression_orale",
+    "Histoire-Géographie": "hist_geo",
+    "Espagnol": "espagnol",
+    "Allemand": "allemand",
+    "Anglais": "anglais",
+    "Français": "francais",
+    "Conduite": "conduite",
+    "EDHC": "edhc",
+    "EPS": "eps",
+    "SVT": "svt",
+    "Physiques-Chimie": "physiques_chimie",
+    "Mathématiques": "mathematiques",
+    "Philosophie": "philosophie",
+}
+
+
+def calculer_statistiques_matieres(resultats):
+    """Moyenne, effectif et taux de réussite (note >= 10) de chaque
+    matière. Une seule requête SQL pour toutes les matières."""
+
+    agregats = {}
+
+    for champ in MATIERES.values():
+        agregats[f"moy_{champ}"] = Avg(champ)
+        agregats[f"nb_{champ}"] = Count(champ)
+        agregats[f"ok_{champ}"] = Count(
+            champ,
+            filter=Q(**{f"{champ}__gte": SEUIL_REUSSITE})
+        )
+
+    totaux = resultats.aggregate(**agregats)
+
+    statistiques = []
+
+    for nom, champ in MATIERES.items():
+
+        moyenne = totaux[f"moy_{champ}"]
+        nombre = totaux[f"nb_{champ}"]
+        reussis = totaux[f"ok_{champ}"]
+
+        if moyenne is not None and nombre:
+            moyenne = round(float(moyenne), 2)
+            taux_reussite = round(reussis / nombre * 100, 2)
+        else:
+            moyenne = None
+            taux_reussite = 0
+
+        statistiques.append({
+            "nom": nom,
+            "champ": champ,
+            "moyenne": moyenne,
+            "nombre": nombre,
+            "taux_reussite": taux_reussite,
+        })
+
+    return statistiques
+
+
+# =====================================================================
+# DONNÉES DES GRAPHIQUES DU DASHBOARD
+# =====================================================================
+#
+# Trois graphiques sont affichés : répartition des élèves par tranche
+# de moyenne, moyenne par niveau, et filles / garçons par tranche.
+# Ils réutilisent le tableau "Statistiques par niveau" déjà calculé
+# (aucune requête SQL supplémentaire). Les données sont transmises au
+# template dans un dictionnaire sérialisé en JSON (filtre
+# `json_script`), que Chart.js lit côté navigateur.
+
+
+def construire_donnees_graphiques(tableau_niveaux):
+
+    lignes_niveaux = [l for l in tableau_niveaux if not l["is_total"]]
+
+    total = next(
+        (l for l in tableau_niveaux if l["niveau"] == "Total général"),
+        None
+    )
+
+    if not lignes_niveaux or total is None:
+        return {"a_des_donnees": False}
+
+    labels_tranches = [
+        "≥ 10",
+        "8,5 à < 10",
+        "< 8,5",
+        "Non classés",
+    ]
+
+    # ---- Répartition des élèves par tranche de moyenne ----
+
+    tranches = {
+        "labels": labels_tranches,
+        "valeurs": [
+            total["sup10_t"],
+            total["moy_t"],
+            total["inf_t"],
+            total["non_classe_t"],
+        ],
+        "taux_reussite": (
+            total["sup10_pct"] if total["classe_t"] else None
+        ),
+    }
+
+    # ---- Moyenne par niveau ----
+
+    niveaux = {
+        "labels": [l["niveau"] for l in lignes_niveaux],
+        "moyennes": [l["moyenne_niveau"] for l in lignes_niveaux],
+    }
+
+    # ---- Filles / garçons par tranche de moyenne ----
+
+    genre = {
+        "labels": labels_tranches,
+        "filles": [
+            total["sup10_f"], total["moy_f"],
+            total["inf_f"], total["non_classe_f"],
+        ],
+        "garcons": [
+            total["sup10_g"], total["moy_g"],
+            total["inf_g"], total["non_classe_g"],
+        ],
+    }
+
+    return {
+        "a_des_donnees": True,
+        "seuil": SEUIL_REUSSITE,
+        "tranches": tranches,
+        "niveaux": niveaux,
+        "genre": genre,
+    }
+
+
 def dashboard(request):
 
     # -----------------------------
@@ -602,6 +745,14 @@ def dashboard(request):
         resultats
     )
 
+    # -----------------------------
+    # DONNÉES DES GRAPHIQUES
+    # -----------------------------
+
+    donnees_graphiques = construire_donnees_graphiques(
+        tableau_statistiques_niveaux
+    )
+
     context = {
 
         "form": form,
@@ -631,6 +782,8 @@ def dashboard(request):
         "tableau_statistiques_niveaux": tableau_statistiques_niveaux,
 
         "tableau_effectifs_niveaux": tableau_effectifs_niveaux,
+
+        "donnees_graphiques": donnees_graphiques,
 
     }
 
@@ -686,64 +839,7 @@ def statistiques_matieres(request):
     if niveau:
         classes = classes.filter(niveau=niveau)
 
-    matieres = {
-        "Composition française": "composition_francaise",
-        "Orthographe / Grammaire": "orthographe_grammaire",
-        "Expression orale": "expression_orale",
-        "Histoire-Géographie": "hist_geo",
-        "Espagnol": "espagnol",
-        "Allemand": "allemand",
-        "Anglais": "anglais",
-        "Français": "francais",
-        "Conduite": "conduite",
-        "EDHC": "edhc",
-        "EPS": "eps",
-        "SVT": "svt",
-        "Physiques-Chimie": "physiques_chimie",
-        "Mathématiques": "mathematiques",
-        "Philosophie": "philosophie",
-    }
-
-    statistiques_matieres = []
-
-    for nom, champ in matieres.items():
-
-        valeurs = resultats.exclude(
-            **{f"{champ}__isnull": True}
-        )
-
-        moyenne = valeurs.aggregate(
-            moyenne=Avg(champ)
-        )["moyenne"]
-
-        nombre = valeurs.count()
-
-        if moyenne is not None:
-            moyenne = round(float(moyenne), 2)
-
-            taux_reussite = (
-                valeurs.filter(
-                    **{f"{champ}__gte": 10}
-                ).count()
-                / nombre
-                * 100
-            )
-
-            taux_reussite = round(
-                taux_reussite,
-                2
-            )
-
-        else:
-            taux_reussite = 0
-
-        statistiques_matieres.append({
-            "nom": nom,
-            "champ": champ,
-            "moyenne": moyenne,
-            "nombre": nombre,
-            "taux_reussite": taux_reussite,
-        })
+    statistiques_matieres = calculer_statistiques_matieres(resultats)
 
     # Matières avec des données
     matieres_valides = [

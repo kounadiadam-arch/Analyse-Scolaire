@@ -704,6 +704,132 @@
 
 
         /* =========================
+           GRAPHIQUES
+        ========================= */
+
+        .charts-section {
+
+            margin-bottom: 30px;
+
+        }
+
+
+        /* Trois graphiques sur une même ligne */
+        .charts-grid {
+
+            display: grid;
+
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+
+            gap: 20px;
+
+        }
+
+
+        .chart-card {
+
+            background: white;
+
+            padding: 20px;
+
+            border-radius: 10px;
+
+            box-shadow:
+                0 2px 8px rgba(0, 0, 0, 0.08);
+
+            min-width: 0;
+
+        }
+
+
+        .chart-title {
+
+            margin: 0 0 4px 0;
+
+            font-size: 16px;
+
+        }
+
+
+        .chart-note {
+
+            margin: 0 0 14px 0;
+
+            color: #666;
+
+            font-size: 13px;
+
+            line-height: 1.4;
+
+            /* Réserve 2 lignes pour que les 3 graphiques restent alignés */
+            min-height: 2.8em;
+
+        }
+
+
+        .chart-box {
+
+            position: relative;
+
+            height: 300px;
+
+        }
+
+
+        .charts-empty {
+
+            background: white;
+
+            padding: 30px;
+
+            border-radius: 10px;
+
+            text-align: center;
+
+            color: #666;
+
+            box-shadow:
+                0 2px 8px rgba(0, 0, 0, 0.08);
+
+        }
+
+
+        /* En dessous de 1000 px, les graphiques passent l'un sous l'autre */
+        @media (max-width: 1000px) {
+
+            .charts-grid {
+
+                grid-template-columns: minmax(0, 1fr);
+
+            }
+
+            .chart-note {
+
+                min-height: 0;
+
+            }
+
+        }
+
+
+        @media (max-width: 600px) {
+
+            .chart-card {
+
+                padding: 15px;
+
+            }
+
+            .chart-box {
+
+                height: 260px;
+
+            }
+
+        }
+
+
+        /* =========================
            RESPONSIVE
         ========================= */
 
@@ -829,6 +955,7 @@
     {% endfor %}
 
 {% endif %}
+
 
 
 <!-- =========================
@@ -1126,6 +1253,55 @@
     </div>
 
 </div>
+
+<!-- =========================
+     VISUALISATIONS (GRAPHIQUES)
+========================= -->
+
+<div class="charts-section" id="charts-section">
+
+    {{ donnees_graphiques|json_script:"donnees-graphiques" }}
+
+    {% if donnees_graphiques.a_des_donnees %}
+
+        <div class="charts-grid">
+
+            <div class="chart-card">
+                <h4 class="chart-title">Élèves par tranche de moyenne</h4>
+                <p class="chart-note">Répartition des élèves. Au centre : taux de réussite (moyenne ≥ 10).</p>
+                <div class="chart-box">
+                    <canvas id="graphTranches" role="img" aria-label="Répartition des élèves par tranche de moyenne"></canvas>
+                </div>
+            </div>
+
+            <div class="chart-card">
+                <h4 class="chart-title">Moyenne par niveau</h4>
+                <p class="chart-note">Ligne pointillée : seuil de 10/20.</p>
+                <div class="chart-box">
+                    <canvas id="graphNiveauMoyenne" role="img" aria-label="Moyenne par niveau"></canvas>
+                </div>
+            </div>
+
+            <div class="chart-card">
+                <h4 class="chart-title">Filles et garçons par tranche</h4>
+                <p class="chart-note">Nombre de filles et de garçons dans chaque tranche de moyenne.</p>
+                <div class="chart-box">
+                    <canvas id="graphGenre" role="img" aria-label="Répartition des filles et des garçons par tranche de moyenne"></canvas>
+                </div>
+            </div>
+
+        </div>
+
+    {% else %}
+
+        <div class="charts-empty">
+            Aucune donnée à visualiser pour les filtres sélectionnés.
+        </div>
+
+    {% endif %}
+
+</div>
+
 
 
 <!-- =========================
@@ -1650,6 +1826,290 @@
     window.addEventListener("popstate", function () {
         window.location.reload();
     });
+
+</script>
+
+
+<!-- =========================
+     GRAPHIQUES (Chart.js)
+========================= -->
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+
+<script>
+
+(function () {
+
+    "use strict";
+
+    var section = document.getElementById("charts-section");
+    var noeudDonnees = document.getElementById("donnees-graphiques");
+
+    if (!section || !noeudDonnees) {
+        return;
+    }
+
+    // Chart.js vient d'un CDN : on prévient l'utilisateur s'il est injoignable.
+    if (typeof Chart === "undefined") {
+        section.insertAdjacentHTML(
+            "beforeend",
+            '<div class="message error">Impossible de charger la bibliothèque ' +
+            'de graphiques. Vérifiez votre connexion Internet, puis ' +
+            'rechargez la page.</div>'
+        );
+        return;
+    }
+
+    var D = JSON.parse(noeudDonnees.textContent);
+
+    if (!D.a_des_donnees) {
+        return;
+    }
+
+
+    // ------------------------------------------------------------
+    // Couleurs et réglages communs
+    // ------------------------------------------------------------
+
+    var COULEUR = {
+        vert: "#198754",
+        ambre: "#f0ad4e",
+        rouge: "#dc3545",
+        gris: "#adb5bd",
+        bleu: "#0d6efd",
+        rose: "#d63384"
+    };
+
+    Chart.defaults.font.family = "Arial, sans-serif";
+    Chart.defaults.font.size = 12;
+    Chart.defaults.color = "#444";
+    Chart.defaults.responsive = true;
+    Chart.defaults.maintainAspectRatio = false;
+    Chart.defaults.plugins.legend.labels.usePointStyle = true;
+    Chart.defaults.plugins.legend.labels.boxWidth = 8;
+
+
+    // ------------------------------------------------------------
+    // Utilitaires
+    // ------------------------------------------------------------
+
+    function fmt(valeur, decimales) {
+        if (valeur === null || valeur === undefined) {
+            return "—";
+        }
+        return Number(valeur).toLocaleString("fr-FR", {
+            minimumFractionDigits: decimales,
+            maximumFractionDigits: decimales
+        });
+    }
+
+    function somme(tableau) {
+        return tableau.reduce(function (a, b) { return a + (b || 0); }, 0);
+    }
+
+    // Vert à partir du seuil, rouge en dessous, gris si pas de valeur.
+    function couleursSelonSeuil(valeurs) {
+        return valeurs.map(function (v) {
+            if (v === null || v === undefined) { return COULEUR.gris; }
+            return v >= D.seuil ? COULEUR.vert : COULEUR.rouge;
+        });
+    }
+
+    function creer(idCanvas, configuration) {
+        var canvas = document.getElementById(idCanvas);
+        if (!canvas) { return null; }
+        try {
+            return new Chart(canvas.getContext("2d"), configuration);
+        } catch (erreur) {
+            // Un graphique en échec ne doit pas bloquer les autres.
+            console.error("Graphique « " + idCanvas + " » : ", erreur);
+            return null;
+        }
+    }
+
+    function axeTitre(texte) {
+        return { display: true, text: texte, color: "#666" };
+    }
+
+
+    // ------------------------------------------------------------
+    // Plugins maison
+    // ------------------------------------------------------------
+
+    // Trace une ligne pointillée au niveau du seuil (10/20).
+    Chart.register({
+        id: "ligneSeuil",
+        afterDatasetsDraw: function (chart, args, options) {
+
+            if (!options || options.valeur === undefined) { return; }
+
+            var echelle = chart.scales[options.axe || "y"];
+            var zone = chart.chartArea;
+
+            if (!echelle) { return; }
+
+            var y = echelle.getPixelForValue(options.valeur);
+            var ctx = chart.ctx;
+
+            ctx.save();
+            ctx.strokeStyle = COULEUR.rouge;
+            ctx.lineWidth = 1.5;
+            ctx.setLineDash([6, 4]);
+            ctx.beginPath();
+            ctx.moveTo(zone.left, y);
+            ctx.lineTo(zone.right, y);
+            ctx.stroke();
+            ctx.restore();
+        }
+    });
+
+    // Affiche un texte au centre d'un graphique en anneau.
+    var pluginTexteCentre = {
+        id: "texteCentre",
+        afterDraw: function (chart, args, options) {
+
+            if (!options || !options.texte) { return; }
+
+            var meta = chart.getDatasetMeta(0);
+
+            if (!meta || !meta.data.length) { return; }
+
+            var x = meta.data[0].x;
+            var y = meta.data[0].y;
+            var ctx = chart.ctx;
+
+            ctx.save();
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
+
+            ctx.fillStyle = "#222";
+            ctx.font = "bold 24px Arial, sans-serif";
+            ctx.fillText(options.texte, x, y - 8);
+
+            ctx.fillStyle = "#666";
+            ctx.font = "12px Arial, sans-serif";
+            ctx.fillText(options.sousTexte || "", x, y + 15);
+
+            ctx.restore();
+        }
+    };
+
+
+    // ------------------------------------------------------------
+    // 1. Répartition des élèves par tranche de moyenne (anneau)
+    // ------------------------------------------------------------
+
+    (function () {
+
+        var T = D.tranches;
+        var total = somme(T.valeurs);
+
+        creer("graphTranches", {
+            type: "doughnut",
+            plugins: [pluginTexteCentre],
+            data: {
+                labels: T.labels,
+                datasets: [{
+                    data: T.valeurs,
+                    backgroundColor: [
+                        COULEUR.vert, COULEUR.ambre, COULEUR.rouge, COULEUR.gris
+                    ],
+                    borderColor: "#fff",
+                    borderWidth: 2
+                }]
+            },
+            options: {
+                cutout: "62%",
+                plugins: {
+                    legend: { position: "bottom" },
+                    texteCentre: {
+                        texte: T.taux_reussite === null
+                            ? "—"
+                            : fmt(T.taux_reussite, 1) + " %",
+                        sousTexte: "de réussite"
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function (c) {
+                                var part = total ? c.parsed / total * 100 : 0;
+                                return " " + c.label + " : " + c.parsed +
+                                       " élève(s) (" + fmt(part, 1) + " %)";
+                            }
+                        }
+                    }
+                }
+            }
+        });
+
+    })();
+
+
+    // ------------------------------------------------------------
+    // 2. Moyenne par niveau
+    // ------------------------------------------------------------
+
+    creer("graphNiveauMoyenne", {
+        type: "bar",
+        data: {
+            labels: D.niveaux.labels,
+            datasets: [{
+                label: "Moyenne",
+                data: D.niveaux.moyennes,
+                backgroundColor: couleursSelonSeuil(D.niveaux.moyennes)
+            }]
+        },
+        options: {
+            plugins: {
+                legend: { display: false },
+                ligneSeuil: { valeur: D.seuil, axe: "y" },
+                tooltip: {
+                    callbacks: {
+                        label: function (c) {
+                            return " Moyenne : " + fmt(c.parsed.y, 2) + " / 20";
+                        }
+                    }
+                }
+            },
+            scales: {
+                x: { grid: { display: false } },
+                y: { min: 0, max: 20, title: axeTitre("Moyenne (/20)") }
+            }
+        }
+    });
+
+
+    // ------------------------------------------------------------
+    // 3. Filles et garçons par tranche de moyenne
+    // ------------------------------------------------------------
+
+    creer("graphGenre", {
+        type: "bar",
+        data: {
+            labels: D.genre.labels,
+            datasets: [
+                { label: "Filles", data: D.genre.filles, backgroundColor: COULEUR.rose },
+                { label: "Garçons", data: D.genre.garcons, backgroundColor: COULEUR.bleu }
+            ]
+        },
+        options: {
+            plugins: {
+                legend: { position: "bottom" },
+                tooltip: {
+                    callbacks: {
+                        label: function (c) {
+                            return " " + c.dataset.label + " : " + c.parsed.y;
+                        }
+                    }
+                }
+            },
+            scales: {
+                x: { grid: { display: false } },
+                y: { beginAtZero: true, ticks: { precision: 0 }, title: axeTitre("Nombre d'élèves") }
+            }
+        }
+    });
+
+})();
 
 </script>
 
