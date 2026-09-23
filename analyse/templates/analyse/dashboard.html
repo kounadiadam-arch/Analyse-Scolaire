@@ -355,6 +355,148 @@
         }
 
 
+
+        /* =========================
+           BLOC ACCOMPAGNEMENT
+        ========================= */
+
+        .accompagnement-section {
+            background: white;
+            padding: 22px;
+            border-radius: 10px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+            margin-bottom: 30px;
+        }
+
+        .accompagnement-header {
+            margin-bottom: 20px;
+        }
+
+        .accompagnement-header h2 {
+            margin-bottom: 8px;
+        }
+
+        .accompagnement-header p {
+            margin: 0;
+            color: #666;
+        }
+
+        .accompagnement-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 20px;
+        }
+
+        .accompagnement-card {
+            border: 1px solid #e1e5ea;
+            border-radius: 10px;
+            padding: 18px;
+            background: #fafbfc;
+        }
+
+        .accompagnement-card h3 {
+            margin-top: 0;
+            margin-bottom: 15px;
+            font-size: 18px;
+        }
+
+        .accompagnement-card-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .accompagnement-card-header h3 {
+            margin-bottom: 15px;
+        }
+
+        .btn-export-sm {
+            display: inline-block;
+            padding: 6px 12px;
+            border-radius: 6px;
+            background: #198754;
+            color: white;
+            text-decoration: none;
+            font-weight: bold;
+            font-size: 13px;
+            white-space: nowrap;
+            margin-bottom: 15px;
+        }
+
+        .btn-export-sm:hover {
+            opacity: 0.9;
+        }
+
+        .accompagnement-card table {
+            background: white;
+        }
+
+        .priority-list {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .priority-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 11px;
+            background: white;
+            border: 1px solid #e1e5ea;
+            border-radius: 8px;
+        }
+
+        .priority-number {
+            min-width: 30px;
+            height: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            background: #dc3545;
+            color: white;
+            font-weight: bold;
+        }
+
+        .priority-info {
+            flex: 1;
+        }
+
+        .priority-info strong {
+            display: block;
+        }
+
+        .priority-meta {
+            color: #666;
+            font-size: 13px;
+            margin-top: 3px;
+        }
+
+        .low-average {
+            font-weight: bold;
+            color: #dc3545;
+        }
+
+        .rate-low {
+            font-weight: bold;
+            color: #dc3545;
+        }
+
+        .empty-accompagnement {
+            color: #198754;
+            font-weight: bold;
+            padding: 10px 0;
+        }
+
+        @media (max-width: 900px) {
+            .accompagnement-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
         /* =========================
            CLASSEMENT
         ========================= */
@@ -386,6 +528,73 @@
 
         }
 
+
+        /* =========================
+           CLASSEMENT : PODIUM + PERFORMANCE
+        ========================= */
+
+        .classement-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+
+        .total-resultats {
+            display: inline-flex;
+            align-items: center;
+            padding: 7px 12px;
+            border-radius: 20px;
+            background: #eef2ff;
+            color: #334155;
+            font-size: 14px;
+            font-weight: bold;
+        }
+
+        .performance-badge {
+            display: inline-block;
+            padding: 5px 10px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: bold;
+            white-space: nowrap;
+        }
+
+        .performance-badge.excellent {
+            background: #d1fae5;
+            color: #065f46;
+        }
+
+        .performance-badge.satisfaisant {
+            background: #dbeafe;
+            color: #1e40af;
+        }
+
+        .performance-badge.a-accompagner {
+            background: #fef3c7;
+            color: #92400e;
+        }
+
+        table.classement-table tr.podium-1 {
+            background: #fff7d6;
+            box-shadow: inset 5px 0 0 #d4af37;
+        }
+
+        table.classement-table tr.podium-2 {
+            background: #f1f5f9;
+            box-shadow: inset 5px 0 0 #94a3b8;
+        }
+
+        table.classement-table tr.podium-3 {
+            background: #fff0e6;
+            box-shadow: inset 5px 0 0 #b87333;
+        }
+
+        .podium-rang {
+            font-size: 17px;
+            font-weight: bold;
+        }
 
         /* =========================
            PAGINATION
@@ -830,6 +1039,97 @@
 
 
         /* =========================
+           FILTRES ACTIFS + PÉRIODE
+        ========================= */
+
+        .filter-actions {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            flex-wrap: wrap;
+            margin-top: 14px;
+        }
+
+        .btn-reset {
+            display: inline-block;
+            padding: 10px 16px;
+            border-radius: 6px;
+            background: #6c757d;
+            color: white;
+            text-decoration: none;
+            font-weight: bold;
+        }
+
+        .btn-reset:hover {
+            opacity: 0.9;
+        }
+
+        .active-filters {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 8px;
+            margin: 14px 0 8px;
+        }
+
+        .active-filters-title {
+            font-size: 14px;
+            font-weight: bold;
+            color: #555;
+        }
+
+        .filter-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 7px;
+            padding: 6px 10px;
+            border-radius: 999px;
+            background: #e7f1ff;
+            color: #0b5ed7;
+            border: 1px solid #b6d4fe;
+            font-size: 13px;
+            font-weight: bold;
+        }
+
+        .period-banner {
+            margin: 0 0 25px;
+            padding: 13px 18px;
+            border-radius: 8px;
+            background: #eef5ff;
+            border-left: 4px solid #0d6efd;
+            color: #17365d;
+        }
+
+        .period-banner strong {
+            margin-right: 6px;
+        }
+
+        .search-box {
+            margin-top: 15px;
+        }
+
+        .search-box label {
+            display: block;
+            margin-bottom: 6px;
+            font-size: 14px;
+            font-weight: bold;
+        }
+
+        .search-box input {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+
+        .search-box input:focus {
+            outline: none;
+            border-color: #0d6efd;
+            box-shadow: 0 0 0 2px rgba(13, 110, 253, 0.12);
+        }
+
+        /* =========================
            RESPONSIVE
         ========================= */
 
@@ -1240,19 +1540,62 @@
             </div>
 
 
-            <!-- Le bouton est caché car les filtres sont automatiques -->
-            <button type="submit" style="display:none;">
+            <!-- RECHERCHE PAR NOM OU MATRICULE -->
+            <div class="search-box">
 
-                Analyser
+                <label for="recherche">
+                    🔍 Rechercher un élève
+                </label>
 
-            </button>
+                <input
+                    type="search"
+                    name="recherche"
+                    id="recherche"
+                    value="{{ recherche }}"
+                    placeholder="Nom, prénom ou matricule..."
+                    autocomplete="off"
+                >
 
+            </div>
+
+            <div class="filter-actions">
+
+                <button type="submit">
+                    Rechercher
+                </button>
+
+                <a href="{% url 'dashboard' %}" class="btn-reset">
+                    ↺ Réinitialiser les filtres
+                </a>
+
+            </div>
 
         </form>
+
+        {% if filtres_actifs %}
+
+            <div class="active-filters">
+
+                <span class="active-filters-title">
+                    Filtres actifs :
+                </span>
+
+                {% for filtre in filtres_actifs %}
+
+                    <span class="filter-badge">
+                        {{ filtre.libelle }} : {{ filtre.valeur }}
+                    </span>
+
+                {% endfor %}
+
+            </div>
+
+        {% endif %}
 
     </div>
 
 </div>
+
 
 <!-- =========================
      VISUALISATIONS (GRAPHIQUES)
@@ -1583,23 +1926,196 @@
 
 
 <!-- =========================
+     ACCOMPAGNEMENT / ALERTES
+========================= -->
+
+<div class="accompagnement-section">
+
+    <div class="accompagnement-header">
+        <h2>🎯 Suivi et accompagnement des élèves</h2>
+        <p>
+            Cette section met en évidence les résultats nécessitant une attention pédagogique,
+            selon les filtres actuellement sélectionnés.
+        </p>
+    </div>
+
+    <div class="accompagnement-grid">
+
+        <!-- Élèves sous 10 -->
+        <div class="accompagnement-card">
+            <div class="accompagnement-card-header">
+                <h3>📉 Élèves avec une moyenne inférieure à 10</h3>
+
+                {% if eleves_sous_10 %}
+                    <a
+                        href="{% url 'export_eleves_sous_10_excel' %}?{{ querystring_classement }}"
+                        class="btn-export-sm"
+                    >
+                        📊 Exporter tous les élèves  MOY < 10 
+                    </a>
+                {% endif %}
+            </div>
+
+            {% if eleves_sous_10 %}
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Élève</th>
+                                <th>Classe</th>
+                                <th>Moyenne</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for resultat in eleves_sous_10|slice:":5" %}
+                                <tr>
+                                    <td>
+                                        {{ resultat.eleve.nom }} {{ resultat.eleve.prenoms }}
+                                    </td>
+                                    <td>{{ resultat.classe.nom }}</td>
+                                    <td class="low-average">
+                                        {{ resultat.moyenne_trimestrielle|default:"-" }} / 20
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <div class="empty-accompagnement">
+                    Aucun élève sous 10 pour les filtres sélectionnés.
+                </div>
+            {% endif %}
+        </div>
+
+        <!-- Matières faibles -->
+        <div class="accompagnement-card">
+            <h3>📚 Matières avec les résultats les plus faibles</h3>
+
+            {% if matieres_faibles %}
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Matière</th>
+                                <th>Moyenne</th>
+                                <th>Réussite</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for matiere in matieres_faibles %}
+                                <tr>
+                                    <td>{{ matiere.nom }}</td>
+                                    <td class="low-average">
+                                        {{ matiere.moyenne|floatformat:2 }} / 20
+                                    </td>
+                                    <td>{{ matiere.taux_reussite|floatformat:2 }} %</td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <div class="empty-accompagnement">
+                    Aucune donnée disponible pour les matières.
+                </div>
+            {% endif %}
+        </div>
+
+        <!-- Classes faibles -->
+        <div class="accompagnement-card">
+            <h3>🏫 Classes avec le plus faible taux de réussite</h3>
+
+            {% if classes_faibles %}
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Classe</th>
+                                <th>Élèves classés</th>
+                                <th>Réussite</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for classe in classes_faibles %}
+                                <tr>
+                                    <td>{{ classe.classe }}</td>
+                                    <td>{{ classe.total }}</td>
+                                    <td class="rate-low">
+                                        {{ classe.taux_reussite|floatformat:2 }} %
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <div class="empty-accompagnement">
+                    Aucune donnée de classe disponible.
+                </div>
+            {% endif %}
+        </div>
+
+        <!-- Liste prioritaire -->
+        <div class="accompagnement-card">
+            <h3>🚨 Élèves à accompagner prioritairement</h3>
+            <p style="color:#666; font-size:13px; margin-top:-5px;">
+                Les 10 moyennes les plus faibles parmi les résultats filtrés.
+            </p>
+
+            {% if eleves_a_accompagner %}
+                <div class="priority-list">
+                    {% for resultat in eleves_a_accompagner %}
+                        <div class="priority-item">
+                            <span class="priority-number">{{ forloop.counter }}</span>
+                            <div class="priority-info">
+                                <strong>
+                                    {{ resultat.eleve.nom }} {{ resultat.eleve.prenoms }}
+                                </strong>
+                                <div class="priority-meta">
+                                    Matricule : {{ resultat.eleve.matricule }} ·
+                                    Classe : {{ resultat.classe.nom }} ·
+                                    Moyenne : <span class="low-average">{{ resultat.moyenne_trimestrielle|default:"-" }} / 20</span>
+                                </div>
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <div class="empty-accompagnement">
+                    Aucun élève à accompagner prioritairement.
+                </div>
+            {% endif %}
+        </div>
+
+    </div>
+</div>
+
+
+<!-- =========================
      CLASSEMENT
 ========================= -->
 
 <div class="table-container" id="classement">
 
 
-    <h2>
+    <div class="classement-header">
 
-        🏆 Classement des élèves
+        <h2>
+            🏆 Classement des élèves
+        </h2>
 
-    </h2>
+        <span class="total-resultats">
+            📊 {{ total_resultats }} résultat{{ total_resultats|pluralize }}
+        </span>
+
+    </div>
 
 
     <div class="table-wrapper">
 
 
-        <table>
+        <table class="classement-table">
 
 
             <thead>
@@ -1626,6 +2142,10 @@
                         Moyenne
                     </th>
 
+                    <th>
+                        Performance
+                    </th>
+
                 </tr>
 
             </thead>
@@ -1637,12 +2157,12 @@
                 {% for resultat in classement %}
 
 
-                    <tr>
+                    <tr class="{% if resultat.rang == 1 %}podium-1{% elif resultat.rang == 2 %}podium-2{% elif resultat.rang == 3 %}podium-3{% endif %}">
 
 
-                        <td>
+                        <td class="podium-rang">
 
-                            {{ resultat.rang|default:"-" }}
+                            {% if resultat.rang == 1 %}🥇{% elif resultat.rang == 2 %}🥈{% elif resultat.rang == 3 %}🥉{% else %}{{ resultat.rang|default:"-" }}{% endif %}
 
                         </td>
 
@@ -1677,6 +2197,15 @@
                         </td>
 
 
+                        <td>
+
+                            <span class="performance-badge {{ resultat.performance_css }}">
+                                {{ resultat.performance }}
+                            </span>
+
+                        </td>
+
+
                     </tr>
 
 
@@ -1685,7 +2214,7 @@
 
                     <tr>
 
-                        <td colspan="5">
+                        <td colspan="6">
 
                             Aucun résultat trouvé.
 

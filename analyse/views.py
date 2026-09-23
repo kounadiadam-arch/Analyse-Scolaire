@@ -632,7 +632,8 @@ def dashboard(request):
     annee_id = request.GET.get("annee")
     classe_id = request.GET.get("classe")
     trimestre = request.GET.get("trimestre")
-    niveau = request.GET.get("niveau")  # Nouveau paramètre pour le niveau
+    niveau = request.GET.get("niveau")
+    recherche = request.GET.get("recherche", "").strip()
 
     annees = AnneeScolaire.objects.all().order_by("-nom")
     classes = Classe.objects.all().order_by("nom")
@@ -665,6 +666,14 @@ def dashboard(request):
     if trimestre:
         resultats = resultats.filter(
             trimestre=trimestre
+        )
+
+    # Recherche par nom, prénom ou matricule
+    if recherche:
+        resultats = resultats.filter(
+            Q(eleve__nom__icontains=recherche)
+            | Q(eleve__prenoms__icontains=recherche)
+            | Q(eleve__matricule__icontains=recherche)
         )
 
     # Si un niveau est sélectionné, on filtre aussi la liste des classes
@@ -708,16 +717,46 @@ def dashboard(request):
 
     )
 
+    # -----------------------------
+    # CLASSEMENT + PERFORMANCE
+    # -----------------------------
+
     classement_queryset = resultats.order_by(
-        "-moyenne_trimestrielle"
+        "-moyenne_trimestrielle",
+        "eleve__nom",
+        "eleve__prenoms",
     )
+
+    # On prépare le classement complet avant la pagination afin que le
+    # rang reste correct sur toutes les pages.
+    classement_liste = list(classement_queryset)
+
+    for rang, resultat in enumerate(classement_liste, start=1):
+        resultat.rang = rang
+
+        moyenne = resultat.moyenne_trimestrielle
+
+        if moyenne is None:
+            resultat.performance = "À accompagner"
+            resultat.performance_css = "a-accompagner"
+        elif moyenne >= 16:
+            resultat.performance = "Excellent"
+            resultat.performance_css = "excellent"
+        elif moyenne >= 10:
+            resultat.performance = "Satisfaisant"
+            resultat.performance_css = "satisfaisant"
+        else:
+            resultat.performance = "À accompagner"
+            resultat.performance_css = "a-accompagner"
+
+    total_resultats = len(classement_liste)
 
     # -----------------------------
     # PAGINATION DU CLASSEMENT (10 élèves par page)
     # -----------------------------
 
     paginator_classement = Paginator(
-        classement_queryset,
+        classement_liste,
         10
     )
 
@@ -746,6 +785,124 @@ def dashboard(request):
     )
 
     # -----------------------------
+    # LIBELLÉS DES FILTRES ACTIFS
+    # -----------------------------
+
+    filtres_actifs = []
+
+    annee_obj = None
+    if annee_id:
+        annee_obj = AnneeScolaire.objects.filter(id=annee_id).first()
+        if annee_obj:
+            filtres_actifs.append({
+                "libelle": "Année scolaire",
+                "valeur": annee_obj.nom,
+            })
+
+    if niveau:
+        filtres_actifs.append({
+            "libelle": "Niveau",
+            "valeur": niveau,
+        })
+
+    classe_obj = None
+    if classe_id:
+        classe_obj = Classe.objects.filter(id=classe_id).first()
+        if classe_obj:
+            filtres_actifs.append({
+                "libelle": "Classe",
+                "valeur": classe_obj.nom,
+            })
+
+    trimestre_labels = {
+        "T1": "Trimestre 1",
+        "T2": "Trimestre 2",
+        "T3": "Trimestre 3",
+    }
+
+    if trimestre:
+        filtres_actifs.append({
+            "libelle": "Trimestre",
+            "valeur": trimestre_labels.get(trimestre, trimestre),
+        })
+
+    if recherche:
+        filtres_actifs.append({
+            "libelle": "Recherche",
+            "valeur": recherche,
+        })
+
+    # Période clairement affichée dans le dashboard
+    periode_annee = annee_obj.nom if annee_obj else "Toutes les années"
+    periode_trimestre = trimestre_labels.get(
+        trimestre,
+        "Tous les trimestres"
+    )
+
+    if annee_obj and trimestre:
+        periode_analysee = f"{periode_annee} — {periode_trimestre}"
+    elif annee_obj:
+        periode_analysee = f"{periode_annee} — tous les trimestres"
+    elif trimestre:
+        periode_analysee = f"Toutes les années — {periode_trimestre}"
+    else:
+        periode_analysee = "Toutes les années — tous les trimestres"
+
+    # -----------------------------
+    # ZONE D'ALERTE ET D'ACCOMPAGNEMENT
+    # -----------------------------
+
+    # Élèves dont la moyenne est inférieure à 10, du plus faible au plus élevé.
+    eleves_sous_10 = list(
+        resultats
+        .filter(moyenne_trimestrielle__lt=10)
+        .order_by("moyenne_trimestrielle", "eleve__nom", "eleve__prenoms")
+    )
+    
+    # Matières ayant les moyennes les plus faibles.
+    statistiques_matieres_dashboard = calculer_statistiques_matieres(resultats)
+    matieres_faibles = sorted(
+        [m for m in statistiques_matieres_dashboard if m["moyenne"] is not None],
+        key=lambda m: m["moyenne"]
+    )[:5]
+
+    # Classes ayant les plus faibles taux de réussite.
+    classes_stats = {}
+    for resultat in resultats:
+        classe_nom = resultat.classe.nom
+        stats_classe = classes_stats.setdefault(
+            resultat.classe_id,
+            {
+                "classe": classe_nom,
+                "total": 0,
+                "reussis": 0,
+            }
+        )
+
+        moyenne = resultat.moyenne_trimestrielle
+        if moyenne is not None and moyenne > 0:
+            stats_classe["total"] += 1
+            if moyenne >= SEUIL_REUSSITE:
+                stats_classe["reussis"] += 1
+
+    classes_faibles = []
+    for stats_classe in classes_stats.values():
+        if stats_classe["total"]:
+            stats_classe["taux_reussite"] = round(
+                stats_classe["reussis"] / stats_classe["total"] * 100,
+                2
+            )
+            classes_faibles.append(stats_classe)
+
+    classes_faibles.sort(
+        key=lambda c: (c["taux_reussite"], c["classe"])
+    )
+    classes_faibles = classes_faibles[:10]
+
+    # Liste prioritaire : les 10 élèves ayant les moyennes les plus faibles.
+    eleves_a_accompagner = eleves_sous_10[:10]
+
+    # -----------------------------
     # DONNÉES DES GRAPHIQUES
     # -----------------------------
 
@@ -767,6 +924,8 @@ def dashboard(request):
 
         "classement": classement,
 
+        "total_resultats": total_resultats,
+
         "querystring_classement": querystring_classement,
 
         "statistiques": statistiques,
@@ -777,13 +936,21 @@ def dashboard(request):
 
         "trimestre_selectionne": trimestre,
 
-        "niveau_selectionne": niveau,  # Ajout du niveau sélectionné
+        "niveau_selectionne": niveau,
+        "recherche": recherche,
+        "filtres_actifs": filtres_actifs,
+        "periode_analysee": periode_analysee,
 
         "tableau_statistiques_niveaux": tableau_statistiques_niveaux,
 
         "tableau_effectifs_niveaux": tableau_effectifs_niveaux,
 
         "donnees_graphiques": donnees_graphiques,
+
+        "eleves_sous_10": eleves_sous_10,
+        "matieres_faibles": matieres_faibles,
+        "classes_faibles": classes_faibles,
+        "eleves_a_accompagner": eleves_a_accompagner,
 
     }
 
@@ -1111,12 +1278,11 @@ def _construire_feuille_effectifs_niveaux(feuille, lignes):
         feuille.column_dimensions[get_column_letter(indice_colonne)].width = 12
 
 
-def exporter_statistiques_excel(request):
-    """Exporte, dans un classeur Excel à plusieurs feuilles, l'ensemble
-    des statistiques affichées sur le dashboard (résumé, classement
-    complet des élèves, tableau par niveau, tableau des effectifs),
-    en respectant les filtres actuellement appliqués (année, niveau,
-    classe, trimestre)."""
+def exporter_eleves_sous_10_excel(request):
+    """Exporte, dans un classeur Excel, la liste complète des élèves
+    dont la moyenne trimestrielle est inférieure à 10, du plus faible
+    au plus élevé, en respectant les filtres actuellement appliqués
+    sur le dashboard (année, niveau, classe, trimestre, recherche)."""
 
     # -----------------------------
     # FILTRES (identiques à la vue dashboard)
@@ -1126,6 +1292,7 @@ def exporter_statistiques_excel(request):
     classe_id = request.GET.get("classe")
     trimestre = request.GET.get("trimestre")
     niveau = request.GET.get("niveau")
+    recherche = request.GET.get("recherche", "").strip()
 
     resultats = Resultat.objects.select_related(
         "eleve",
@@ -1144,6 +1311,116 @@ def exporter_statistiques_excel(request):
 
     if trimestre:
         resultats = resultats.filter(trimestre=trimestre)
+
+    if recherche:
+        resultats = resultats.filter(
+            Q(eleve__nom__icontains=recherche)
+            | Q(eleve__prenoms__icontains=recherche)
+            | Q(eleve__matricule__icontains=recherche)
+        )
+
+    eleves_sous_10 = resultats.filter(
+        moyenne_trimestrielle__lt=10
+    ).order_by("moyenne_trimestrielle", "eleve__nom", "eleve__prenoms")
+
+    # -----------------------------
+    # CONSTRUCTION DU CLASSEUR EXCEL
+    # -----------------------------
+
+    classeur = Workbook()
+
+    feuille = classeur.active
+    feuille.title = "Eleves sous 10"
+
+    _ecrire_entetes(
+        feuille,
+        ["Rang", "Matricule", "Nom", "Prénoms", "Classe", "Niveau", "Moyenne"]
+    )
+
+    ligne_excel = 2
+
+    for rang, resultat in enumerate(eleves_sous_10, start=1):
+
+        feuille.cell(row=ligne_excel, column=1, value=rang)
+        feuille.cell(row=ligne_excel, column=2, value=resultat.eleve.matricule)
+        feuille.cell(row=ligne_excel, column=3, value=resultat.eleve.nom)
+        feuille.cell(row=ligne_excel, column=4, value=resultat.eleve.prenoms)
+        feuille.cell(row=ligne_excel, column=5, value=resultat.classe.nom)
+        feuille.cell(row=ligne_excel, column=6, value=resultat.classe.niveau)
+        feuille.cell(
+            row=ligne_excel,
+            column=7,
+            value=float(resultat.moyenne_trimestrielle)
+        )
+
+        ligne_excel += 1
+
+    _ajuster_largeurs_colonnes(feuille)
+
+    # -----------------------------
+    # RÉPONSE HTTP (téléchargement du fichier)
+    # -----------------------------
+
+    tampon = io.BytesIO()
+    classeur.save(tampon)
+    tampon.seek(0)
+
+    horodatage = datetime.now().strftime("%Y%m%d_%H%M")
+    nom_fichier = f"eleves_sous_10_{horodatage}.xlsx"
+
+    reponse = HttpResponse(
+        tampon.getvalue(),
+        content_type=(
+            "application/vnd.openxmlformats-officedocument"
+            ".spreadsheetml.sheet"
+        )
+    )
+    reponse["Content-Disposition"] = f'attachment; filename="{nom_fichier}"'
+
+    return reponse
+
+
+def exporter_statistiques_excel(request):
+    """Exporte, dans un classeur Excel à plusieurs feuilles, l'ensemble
+    des statistiques affichées sur le dashboard (résumé, classement
+    complet des élèves, tableau par niveau, tableau des effectifs),
+    en respectant les filtres actuellement appliqués (année, niveau,
+    classe, trimestre)."""
+
+    # -----------------------------
+    # FILTRES (identiques à la vue dashboard)
+    # -----------------------------
+
+    annee_id = request.GET.get("annee")
+    classe_id = request.GET.get("classe")
+    trimestre = request.GET.get("trimestre")
+    niveau = request.GET.get("niveau")
+    recherche = request.GET.get("recherche", "").strip()
+
+    resultats = Resultat.objects.select_related(
+        "eleve",
+        "annee_scolaire",
+        "classe"
+    )
+
+    if niveau:
+        resultats = resultats.filter(classe__niveau=niveau)
+
+    if annee_id:
+        resultats = resultats.filter(annee_scolaire_id=annee_id)
+
+    if classe_id:
+        resultats = resultats.filter(classe_id=classe_id)
+
+    if trimestre:
+        resultats = resultats.filter(trimestre=trimestre)
+
+    if recherche:
+        resultats = resultats.filter(
+            Q(eleve__nom__icontains=recherche)
+            | Q(eleve__prenoms__icontains=recherche)
+            | Q(eleve__matricule__icontains=recherche)
+        )
 
     # -----------------------------
     # STATISTIQUES (mêmes calculs que la vue dashboard)

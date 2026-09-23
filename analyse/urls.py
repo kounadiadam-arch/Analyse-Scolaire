@@ -25,5 +25,7 @@ urlpatterns = [
         views.exporter_statistiques_excel,
         name="export_statistiques_excel"
     ),
-
+    path("export/eleves-sous-10/",
+        views.exporter_eleves_sous_10_excel, 
+        name="export_eleves_sous_10_excel"),
 ]
