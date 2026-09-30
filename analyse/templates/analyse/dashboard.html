@@ -1,35 +1,15 @@
-<!DOCTYPE html>
-<html lang="fr">
+{% extends 'base.html' %}
 
-<head>
-
-    <meta charset="UTF-8">
-
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-    <title>Tableau de bord analyse scolaire</title>
+{% block title %}Tableau de bord analyse scolaire{% endblock %}
 
 
+{% block extra_style %}
     <style>
 
         * {
             box-sizing: border-box;
         }
 
-
-        body {
-
-            font-family: Arial, sans-serif;
-
-            background: #f4f6f9;
-
-            margin: 0;
-
-            padding: 30px;
-
-            color: #222;
-
-        }
 
 
         h1 {
@@ -381,12 +361,6 @@
             color: #666;
         }
 
-        .accompagnement-grid {
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 20px;
-        }
-
         .accompagnement-card {
             border: 1px solid #e1e5ea;
             border-radius: 10px;
@@ -434,9 +408,15 @@
         }
 
         .priority-list {
-            display: flex;
-            flex-direction: column;
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
             gap: 10px;
+        }
+
+        @media (max-width: 700px) {
+            .priority-list {
+                grid-template-columns: 1fr;
+            }
         }
 
         .priority-item {
@@ -489,12 +469,6 @@
             color: #198754;
             font-weight: bold;
             padding: 10px 0;
-        }
-
-        @media (max-width: 900px) {
-            .accompagnement-grid {
-                grid-template-columns: 1fr;
-            }
         }
 
         /* =========================
@@ -704,212 +678,6 @@
 
         }
 
-
-        table.stats-effectifs {
-
-            width: 100%;
-
-            border-collapse: collapse;
-
-            font-size: 13px;
-
-            min-width: 900px;
-
-        }
-
-
-        table.stats-effectifs th,
-        table.stats-effectifs td {
-
-            border: 1px solid #333;
-
-            padding: 6px 10px;
-
-            text-align: center;
-
-            white-space: nowrap;
-
-        }
-
-
-        table.stats-effectifs thead th {
-
-            background: #2c3e50;
-
-            color: white;
-
-            font-weight: bold;
-
-        }
-
-
-        table.stats-effectifs td:first-child,
-        table.stats-effectifs th:first-child {
-
-            text-align: left;
-
-            font-weight: bold;
-
-            background: #f8f9fa;
-
-        }
-
-
-        table.stats-effectifs thead th:first-child {
-
-            background: #2c3e50;
-
-        }
-
-
-        table.stats-effectifs tbody tr:nth-child(even) {
-
-            background: #fafafa;
-
-        }
-
-
-        table.stats-effectifs tr.total-row td {
-
-            font-weight: bold;
-
-            background: #dfe9f5;
-
-        }
-
-
-        table.stats-effectifs tr.total-row td:first-child {
-
-            background: #c5d7ec;
-
-        }
-
-
-        table.stats-effectifs tr.total-general td {
-
-            background: #b8cce4;
-
-        }
-
-
-        table.stats-effectifs tr.total-general td:first-child {
-
-            background: #9cb9dd;
-
-        }
-
-
-        /* =========================
-           TABLEAU STATISTIQUES PAR NIVEAU
-        ========================= */
-
-        .stats-niveaux-wrapper {
-
-            overflow-x: auto;
-
-        }
-
-
-        table.stats-niveaux {
-
-            width: 100%;
-
-            border-collapse: collapse;
-
-            font-size: 13px;
-
-            min-width: 1400px;
-
-        }
-
-
-        table.stats-niveaux th,
-        table.stats-niveaux td {
-
-            border: 1px solid #333;
-
-            padding: 6px 8px;
-
-            text-align: center;
-
-            white-space: nowrap;
-
-        }
-
-
-        table.stats-niveaux thead th {
-
-            background: #2c3e50;
-
-            color: white;
-
-            font-weight: bold;
-
-        }
-
-
-        table.stats-niveaux td:first-child,
-        table.stats-niveaux th:first-child {
-
-            text-align: left;
-
-            position: sticky;
-
-            left: 0;
-
-            background: #f8f9fa;
-
-            font-weight: bold;
-
-            z-index: 1;
-
-        }
-
-
-        table.stats-niveaux thead th:first-child {
-
-            background: #2c3e50;
-
-            z-index: 2;
-
-        }
-
-
-        table.stats-niveaux tbody tr:nth-child(even) {
-
-            background: #fafafa;
-
-        }
-
-
-        table.stats-niveaux tr.total-row td {
-
-            font-weight: bold;
-
-            background: #dfe9f5;
-
-        }
-
-
-        table.stats-niveaux tr.total-row td:first-child {
-
-            background: #c5d7ec;
-
-        }
-
-
-        table.stats-niveaux tr.total-general td {
-
-            background: #b8cce4;
-
-        }
-
-
-        table.stats-niveaux tr.total-general td:first-child {
-
-            background: #9cb9dd;
-
-        }
 
 
         /* =========================
@@ -1222,11 +990,11 @@
         }
 
     </style>
+{% endblock %}
 
-</head>
 
+{% block content %}
 
-<body>
 
 
 <!-- =========================
@@ -1596,7 +1364,6 @@
 
 </div>
 
-
 <!-- =========================
      VISUALISATIONS (GRAPHIQUES)
 ========================= -->
@@ -1733,196 +1500,6 @@
 </div>
 
 
-<!-- =========================
-     EFFECTIFS / AFFECTÉS / REDOUBLANTS PAR NIVEAU
-========================= -->
-
-<div class="table-container" style="margin-bottom: 30px;">
-
-
-    <h2>
-
-        👥 Effectifs, affectés et redoublants par niveau
-
-    </h2>
-
-
-    <div class="stats-niveaux-wrapper">
-
-
-        <table class="stats-effectifs">
-
-
-            <thead>
-
-                <tr>
-
-                    <th rowspan="2">Niveau</th>
-
-                    <th colspan="3">Effectif</th>
-                    <th colspan="3">Affectés</th>
-                    <th colspan="3">Redoublants</th>
-
-                </tr>
-
-                <tr>
-
-                    <th>G</th><th>F</th><th>Total</th>
-                    <th>G</th><th>F</th><th>Total</th>
-                    <th>G</th><th>F</th><th>Total</th>
-
-                </tr>
-
-            </thead>
-
-
-            <tbody>
-
-                {% for ligne in tableau_effectifs_niveaux %}
-
-                    <tr {% if ligne.is_total %}class="total-row{% if ligne.niveau == "Total Général" %} total-general{% endif %}"{% endif %}>
-
-                        <td>{{ ligne.niveau }}</td>
-
-                        <td>{{ ligne.effectif_g }}</td>
-                        <td>{{ ligne.effectif_f }}</td>
-                        <td>{{ ligne.effectif_t }}</td>
-
-                        <td>{{ ligne.affectes_g }}</td>
-                        <td>{{ ligne.affectes_f }}</td>
-                        <td>{{ ligne.affectes_t }}</td>
-
-                        <td>{{ ligne.redoublants_g }}</td>
-                        <td>{{ ligne.redoublants_f }}</td>
-                        <td>{{ ligne.redoublants_t }}</td>
-
-                    </tr>
-
-                {% empty %}
-
-                    <tr>
-                        <td colspan="10">Aucune donnée pour les filtres sélectionnés.</td>
-                    </tr>
-
-                {% endfor %}
-
-            </tbody>
-
-
-        </table>
-
-
-    </div>
-
-
-</div>
-
-
-<!-- =========================
-     STATISTIQUES PAR NIVEAU
-========================= -->
-
-<div class="table-container" style="margin-bottom: 30px;">
-
-
-    <h2>
-
-        📈 Statistiques par niveau
-
-    </h2>
-
-
-    <div class="stats-niveaux-wrapper">
-
-
-        <table class="stats-niveaux">
-
-
-            <thead>
-
-                <tr>
-
-                    <th rowspan="2">Niveaux</th>
-                    <th rowspan="2">Nombres<br>de classes</th>
-
-                    <th colspan="3">Effectif classé</th>
-                    <th colspan="3">Effectif non classé</th>
-
-                    <th colspan="4">MOY TRIMES &ge; 10</th>
-                    <th colspan="4">08.50 &le; MOY TRIMES &lt; 10</th>
-                    <th colspan="4">MOY TRIMES &lt; 08.50</th>
-
-                    <th rowspan="2">Moyenne<br>par niveau</th>
-
-                </tr>
-
-                <tr>
-
-                    <th>F</th><th>G</th><th>T</th>
-                    <th>F</th><th>G</th><th>T</th>
-                    <th>F</th><th>G</th><th>T</th><th>%</th>
-                    <th>F</th><th>G</th><th>T</th><th>%</th>
-                    <th>F</th><th>G</th><th>T</th><th>%</th>
-
-                </tr>
-
-            </thead>
-
-
-            <tbody>
-
-                {% for ligne in tableau_statistiques_niveaux %}
-
-                    <tr {% if ligne.is_total %}class="total-row{% if ligne.niveau == "Total général" %} total-general{% endif %}"{% endif %}>
-
-                        <td>{{ ligne.niveau }}</td>
-                        <td>{{ ligne.nombre_classes }}</td>
-
-                        <td>{{ ligne.classe_f }}</td>
-                        <td>{{ ligne.classe_g }}</td>
-                        <td>{{ ligne.classe_t }}</td>
-
-                        <td>{{ ligne.non_classe_f }}</td>
-                        <td>{{ ligne.non_classe_g }}</td>
-                        <td>{{ ligne.non_classe_t }}</td>
-
-                        <td>{{ ligne.sup10_f }}</td>
-                        <td>{{ ligne.sup10_g }}</td>
-                        <td>{{ ligne.sup10_t }}</td>
-                        <td>{{ ligne.sup10_pct }}%</td>
-
-                        <td>{{ ligne.moy_f }}</td>
-                        <td>{{ ligne.moy_g }}</td>
-                        <td>{{ ligne.moy_t }}</td>
-                        <td>{{ ligne.moy_pct }}%</td>
-
-                        <td>{{ ligne.inf_f }}</td>
-                        <td>{{ ligne.inf_g }}</td>
-                        <td>{{ ligne.inf_t }}</td>
-                        <td>{{ ligne.inf_pct }}%</td>
-
-                        <td class="moyenne">{{ ligne.moyenne_niveau|default:"-" }}</td>
-
-                    </tr>
-
-                {% empty %}
-
-                    <tr>
-                        <td colspan="21">Aucune donnée pour les filtres sélectionnés.</td>
-                    </tr>
-
-                {% endfor %}
-
-            </tbody>
-
-
-        </table>
-
-
-    </div>
-
-
-</div>
 
 
 <!-- =========================
@@ -1939,155 +1516,35 @@
         </p>
     </div>
 
-    <div class="accompagnement-grid">
+    <div class="accompagnement-card">
+        <h3>🚨 Élèves à accompagner prioritairement</h3>
+        <p style="color:#666; font-size:13px; margin-top:-5px;">
+            Les 10 moyennes les plus faibles parmi les résultats filtrés.
+        </p>
 
-        <!-- Élèves sous 10 -->
-        <div class="accompagnement-card">
-            <div class="accompagnement-card-header">
-                <h3>📉 Élèves avec une moyenne inférieure à 10</h3>
-
-                {% if eleves_sous_10 %}
-                    <a
-                        href="{% url 'export_eleves_sous_10_excel' %}?{{ querystring_classement }}"
-                        class="btn-export-sm"
-                    >
-                        📊 Exporter tous les élèves  MOY < 10 
-                    </a>
-                {% endif %}
-            </div>
-
-            {% if eleves_sous_10 %}
-                <div class="table-wrapper">
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>Élève</th>
-                                <th>Classe</th>
-                                <th>Moyenne</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for resultat in eleves_sous_10|slice:":5" %}
-                                <tr>
-                                    <td>
-                                        {{ resultat.eleve.nom }} {{ resultat.eleve.prenoms }}
-                                    </td>
-                                    <td>{{ resultat.classe.nom }}</td>
-                                    <td class="low-average">
-                                        {{ resultat.moyenne_trimestrielle|default:"-" }} / 20
-                                    </td>
-                                </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
-            {% else %}
-                <div class="empty-accompagnement">
-                    Aucun élève sous 10 pour les filtres sélectionnés.
-                </div>
-            {% endif %}
-        </div>
-
-        <!-- Matières faibles -->
-        <div class="accompagnement-card">
-            <h3>📚 Matières avec les résultats les plus faibles</h3>
-
-            {% if matieres_faibles %}
-                <div class="table-wrapper">
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>Matière</th>
-                                <th>Moyenne</th>
-                                <th>Réussite</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for matiere in matieres_faibles %}
-                                <tr>
-                                    <td>{{ matiere.nom }}</td>
-                                    <td class="low-average">
-                                        {{ matiere.moyenne|floatformat:2 }} / 20
-                                    </td>
-                                    <td>{{ matiere.taux_reussite|floatformat:2 }} %</td>
-                                </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
-            {% else %}
-                <div class="empty-accompagnement">
-                    Aucune donnée disponible pour les matières.
-                </div>
-            {% endif %}
-        </div>
-
-        <!-- Classes faibles -->
-        <div class="accompagnement-card">
-            <h3>🏫 Classes avec le plus faible taux de réussite</h3>
-
-            {% if classes_faibles %}
-                <div class="table-wrapper">
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>Classe</th>
-                                <th>Élèves classés</th>
-                                <th>Réussite</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for classe in classes_faibles %}
-                                <tr>
-                                    <td>{{ classe.classe }}</td>
-                                    <td>{{ classe.total }}</td>
-                                    <td class="rate-low">
-                                        {{ classe.taux_reussite|floatformat:2 }} %
-                                    </td>
-                                </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
-            {% else %}
-                <div class="empty-accompagnement">
-                    Aucune donnée de classe disponible.
-                </div>
-            {% endif %}
-        </div>
-
-        <!-- Liste prioritaire -->
-        <div class="accompagnement-card">
-            <h3>🚨 Élèves à accompagner prioritairement</h3>
-            <p style="color:#666; font-size:13px; margin-top:-5px;">
-                Les 10 moyennes les plus faibles parmi les résultats filtrés.
-            </p>
-
-            {% if eleves_a_accompagner %}
-                <div class="priority-list">
-                    {% for resultat in eleves_a_accompagner %}
-                        <div class="priority-item">
-                            <span class="priority-number">{{ forloop.counter }}</span>
-                            <div class="priority-info">
-                                <strong>
-                                    {{ resultat.eleve.nom }} {{ resultat.eleve.prenoms }}
-                                </strong>
-                                <div class="priority-meta">
-                                    Matricule : {{ resultat.eleve.matricule }} ·
-                                    Classe : {{ resultat.classe.nom }} ·
-                                    Moyenne : <span class="low-average">{{ resultat.moyenne_trimestrielle|default:"-" }} / 20</span>
-                                </div>
+        {% if eleves_a_accompagner %}
+            <div class="priority-list">
+                {% for resultat in eleves_a_accompagner %}
+                    <div class="priority-item">
+                        <span class="priority-number">{{ forloop.counter }}</span>
+                        <div class="priority-info">
+                            <strong>
+                                {{ resultat.eleve.nom }} {{ resultat.eleve.prenoms }}
+                            </strong>
+                            <div class="priority-meta">
+                                Matricule : {{ resultat.eleve.matricule }} ·
+                                Classe : {{ resultat.classe.nom }} ·
+                                Moyenne : <span class="low-average">{{ resultat.moyenne_trimestrielle|default:"-" }} / 20</span>
                             </div>
                         </div>
-                    {% endfor %}
-                </div>
-            {% else %}
-                <div class="empty-accompagnement">
-                    Aucun élève à accompagner prioritairement.
-                </div>
-            {% endif %}
-        </div>
-
+                    </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <div class="empty-accompagnement">
+                Aucun élève à accompagner prioritairement.
+            </div>
+        {% endif %}
     </div>
 </div>
 
@@ -2286,6 +1743,12 @@
 
 </div>
 
+
+
+{% endblock %}
+
+
+{% block extra_script %}
 
 <script>
 
@@ -2643,6 +2106,5 @@
 </script>
 
 
-</body>
 
-</html>
+{% endblock %}

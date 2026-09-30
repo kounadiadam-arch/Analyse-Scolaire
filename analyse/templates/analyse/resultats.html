@@ -1,0 +1,686 @@
+{% extends 'base.html' %}
+
+{% block title %}Résultats — Analyse scolaire{% endblock %}
+
+
+{% block extra_style %}
+    <style>
+
+    /* Styles communs aux pages « Résultats » et « Élèves à suivre »
+       (repris du dashboard pour garder exactement le même rendu). */
+
+    /* ---------- Filtres ---------- */
+
+    .filter-box,
+    .table-container,
+    .accompagnement-card {
+        background: white;
+        border-radius: 10px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    }
+
+    .filter-box {
+        padding: 22px;
+        margin-bottom: 20px;
+    }
+
+    .filter-box h2 {
+        margin-bottom: 18px;
+    }
+
+    .filters {
+        display: flex;
+        gap: 12px;
+        align-items: end;
+        flex-wrap: wrap;
+        margin-bottom: 15px;
+    }
+
+    .filters > div {
+        flex: 1;
+        min-width: 160px;
+    }
+
+    .filters label {
+        display: block;
+        margin-bottom: 6px;
+        font-size: 14px;
+        font-weight: bold;
+    }
+
+    .filters select {
+        width: 100%;
+        padding: 10px;
+        border: 1px solid #ccc;
+        border-radius: 6px;
+        background: white;
+    }
+
+    .search-box {
+        margin-top: 15px;
+    }
+
+    .search-box label {
+        display: block;
+        margin-bottom: 6px;
+        font-size: 14px;
+        font-weight: bold;
+    }
+
+    .search-box input {
+        width: 100%;
+        padding: 10px 12px;
+        border: 1px solid #ccc;
+        border-radius: 6px;
+        font-size: 14px;
+    }
+
+    .search-box input:focus {
+        outline: none;
+        border-color: #0d6efd;
+        box-shadow: 0 0 0 2px rgba(13, 110, 253, 0.12);
+    }
+
+    .filter-actions {
+        display: flex;
+        gap: 10px;
+        align-items: center;
+        flex-wrap: wrap;
+        margin-top: 14px;
+    }
+
+    .filter-actions button {
+        padding: 10px 20px;
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+        font-weight: bold;
+        background: #0d6efd;
+        color: white;
+    }
+
+    .btn-reset {
+        display: inline-block;
+        padding: 10px 16px;
+        border-radius: 6px;
+        background: #6c757d;
+        color: white;
+        text-decoration: none;
+        font-weight: bold;
+    }
+
+    .btn-reset:hover,
+    .filter-actions button:hover {
+        opacity: 0.9;
+    }
+
+    .active-filters {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 8px;
+        margin: 14px 0 8px;
+    }
+
+    .active-filters-title {
+        font-size: 14px;
+        font-weight: bold;
+        color: #555;
+    }
+
+    .filter-badge {
+        display: inline-flex;
+        align-items: center;
+        padding: 6px 10px;
+        border-radius: 999px;
+        background: #e7f1ff;
+        color: #0b5ed7;
+        border: 1px solid #b6d4fe;
+        font-size: 13px;
+        font-weight: bold;
+    }
+
+    .period-banner {
+        margin: 0 0 20px;
+        padding: 13px 18px;
+        border-radius: 8px;
+        background: #eef5ff;
+        border-left: 4px solid #0d6efd;
+        color: #17365d;
+    }
+
+    .period-banner strong {
+        margin-right: 6px;
+    }
+
+    /* ---------- Cartes de synthèse ---------- */
+
+    .cards {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 20px;
+        margin-bottom: 25px;
+    }
+
+    .card {
+        background: white;
+        padding: 20px;
+        border-radius: 10px;
+        text-align: center;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    }
+
+    .card h2 {
+        margin: 0;
+        font-size: 30px;
+    }
+
+    .card p {
+        color: #666;
+        margin-bottom: 0;
+    }
+
+    /* ---------- Tableaux ---------- */
+
+    .table-container {
+        padding: 20px;
+        margin-bottom: 25px;
+    }
+
+    .table-wrapper {
+        overflow-x: auto;
+    }
+
+    table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    th,
+    td {
+        padding: 12px;
+        border-bottom: 1px solid #ddd;
+        text-align: left;
+    }
+
+    th {
+        background: #f1f3f5;
+    }
+
+    tr:hover {
+        background: #f8f9fa;
+    }
+
+    .table-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 15px;
+        flex-wrap: wrap;
+        margin-bottom: 15px;
+    }
+
+    .table-header h2 {
+        margin-bottom: 0;
+    }
+
+    .header-actions {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        flex-wrap: wrap;
+    }
+
+    .total-resultats {
+        display: inline-flex;
+        align-items: center;
+        padding: 7px 12px;
+        border-radius: 20px;
+        background: #eef2ff;
+        color: #334155;
+        font-size: 14px;
+        font-weight: bold;
+    }
+
+    .btn-export-sm {
+        display: inline-block;
+        padding: 7px 14px;
+        border-radius: 6px;
+        background: #198754;
+        color: white;
+        text-decoration: none;
+        font-weight: bold;
+        font-size: 13px;
+        white-space: nowrap;
+    }
+
+    .btn-export-sm:hover {
+        opacity: 0.9;
+    }
+
+    .performance-badge {
+        display: inline-block;
+        padding: 5px 10px;
+        border-radius: 20px;
+        font-size: 12px;
+        font-weight: bold;
+        white-space: nowrap;
+    }
+
+    .performance-badge.excellent {
+        background: #d1fae5;
+        color: #065f46;
+    }
+
+    .performance-badge.satisfaisant {
+        background: #dbeafe;
+        color: #1e40af;
+    }
+
+    .performance-badge.a-accompagner {
+        background: #fef3c7;
+        color: #92400e;
+    }
+
+    table.classement-table tr.podium-1 {
+        background: #fff7d6;
+        box-shadow: inset 5px 0 0 #d4af37;
+    }
+
+    table.classement-table tr.podium-2 {
+        background: #f1f5f9;
+        box-shadow: inset 5px 0 0 #94a3b8;
+    }
+
+    table.classement-table tr.podium-3 {
+        background: #fff0e6;
+        box-shadow: inset 5px 0 0 #b87333;
+    }
+
+    .podium-rang {
+        font-size: 17px;
+        font-weight: bold;
+    }
+
+    .low-average,
+    .rate-low {
+        font-weight: bold;
+        color: #dc3545;
+    }
+
+    .empty-accompagnement {
+        color: #198754;
+        font-weight: bold;
+        padding: 10px 0;
+    }
+
+    /* ---------- Cartes du suivi ---------- */
+
+    .accompagnement-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 20px;
+        margin-bottom: 25px;
+    }
+
+    .accompagnement-card {
+        padding: 18px;
+    }
+
+    .accompagnement-card h3 {
+        margin-top: 0;
+        margin-bottom: 15px;
+        font-size: 18px;
+    }
+
+    /* ---------- Pagination ---------- */
+
+    .pagination {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 15px;
+        margin-top: 20px;
+        flex-wrap: wrap;
+    }
+
+    .pagination-link {
+        padding: 8px 16px;
+        border-radius: 6px;
+        background: #0d6efd;
+        color: white;
+        text-decoration: none;
+        font-weight: bold;
+    }
+
+    .pagination-link:hover {
+        opacity: 0.9;
+    }
+
+    .pagination-link.disabled {
+        background: #e9ecef;
+        color: #adb5bd;
+        cursor: not-allowed;
+    }
+
+    .pagination-info {
+        color: #555;
+        font-weight: bold;
+    }
+
+    @media (max-width: 1100px) {
+        .cards {
+            grid-template-columns: repeat(2, 1fr);
+        }
+    }
+
+    @media (max-width: 900px) {
+        .accompagnement-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+
+    @media (max-width: 600px) {
+        .cards {
+            grid-template-columns: 1fr;
+        }
+
+        .filter-box,
+        .table-container {
+            padding: 15px;
+        }
+    }
+
+</style>
+{% endblock %}
+
+
+{% block content %}
+
+<h1>📋 Résultats</h1>
+
+<!-- =========================
+     FILTRES (partagés par « Résultats » et « Élèves à suivre »)
+     Variables attendues : reset_url
+========================= -->
+
+<div class="filter-box">
+
+    <h2>🔎 Filtrer les résultats</h2>
+
+    <!-- Le formulaire s'envoie automatiquement dès qu'un champ change -->
+    <form method="GET" id="filterForm">
+
+        <div class="filters">
+
+            <!-- ANNÉE -->
+            <div>
+                <label for="annee">Année scolaire</label>
+                <select
+                    name="annee"
+                    id="annee"
+                    onchange="document.getElementById('filterForm').submit();"
+                >
+                    <option value="">Toutes les années</option>
+
+                    {% for annee in annees %}
+                        <option
+                            value="{{ annee.id }}"
+                            {% if annee_selectionnee == annee.id|stringformat:"s" %}selected{% endif %}
+                        >
+                            {{ annee.nom }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <!-- NIVEAU -->
+            <div>
+                <label for="niveau">Niveau</label>
+                <select
+                    name="niveau"
+                    id="niveau"
+                    onchange="document.getElementById('filterForm').submit();"
+                >
+                    <option value="">Tous les niveaux</option>
+
+                    {% for niv in niveaux %}
+                        <option
+                            value="{{ niv }}"
+                            {% if niveau_selectionne == niv %}selected{% endif %}
+                        >
+                            {{ niv }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <!-- CLASSE -->
+            <div>
+                <label for="classe">Classe</label>
+                <select
+                    name="classe"
+                    id="classe"
+                    onchange="document.getElementById('filterForm').submit();"
+                >
+                    <option value="">Toutes les classes</option>
+
+                    {% for classe in classes %}
+                        <option
+                            value="{{ classe.id }}"
+                            {% if classe_selectionnee == classe.id|stringformat:"s" %}selected{% endif %}
+                        >
+                            {{ classe.nom }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <!-- TRIMESTRE -->
+            <div>
+                <label for="trimestre">Trimestre</label>
+                <select
+                    name="trimestre"
+                    id="trimestre"
+                    onchange="document.getElementById('filterForm').submit();"
+                >
+                    <option value="">Tous les trimestres</option>
+                    <option value="T1" {% if trimestre_selectionne == "T1" %}selected{% endif %}>Trimestre 1</option>
+                    <option value="T2" {% if trimestre_selectionne == "T2" %}selected{% endif %}>Trimestre 2</option>
+                    <option value="T3" {% if trimestre_selectionne == "T3" %}selected{% endif %}>Trimestre 3</option>
+                </select>
+            </div>
+
+        </div>
+
+        <!-- RECHERCHE PAR NOM OU MATRICULE -->
+        <div class="search-box">
+            <label for="recherche">🔍 Rechercher un élève</label>
+            <input
+                type="search"
+                name="recherche"
+                id="recherche"
+                value="{{ recherche }}"
+                placeholder="Nom, prénom ou matricule..."
+                autocomplete="off"
+            >
+        </div>
+
+        <div class="filter-actions">
+            <button type="submit">Rechercher</button>
+
+            <a href="{% url 'resultats' %}" class="btn-reset">
+                ↺ Réinitialiser les filtres
+            </a>
+        </div>
+
+    </form>
+
+    {% if filtres_actifs %}
+        <div class="active-filters">
+            <span class="active-filters-title">Filtres actifs :</span>
+
+            {% for filtre in filtres_actifs %}
+                <span class="filter-badge">
+                    {{ filtre.libelle }} : {{ filtre.valeur }}
+                </span>
+            {% endfor %}
+        </div>
+    {% endif %}
+
+</div>
+
+
+
+<!-- =========================
+     CARTES DE SYNTHÈSE
+========================= -->
+
+<div class="cards">
+
+    <div class="card">
+        <h2>{{ statistiques.nombre_eleves|default:0 }}</h2>
+        <p>Résultats</p>
+    </div>
+
+    <div class="card">
+        <h2>{{ statistiques.moyenne_classe|floatformat:2|default:"-" }}</h2>
+        <p>Moyenne générale</p>
+    </div>
+
+    <div class="card">
+        <h2>{{ statistiques.meilleure_moyenne|floatformat:2|default:"-" }}</h2>
+        <p>Meilleure moyenne</p>
+    </div>
+
+    <div class="card">
+        <h2>{{ statistiques.plus_faible_moyenne|floatformat:2|default:"-" }}</h2>
+        <p>Plus faible moyenne</p>
+    </div>
+
+</div>
+
+
+<!-- =========================
+     CLASSEMENT
+========================= -->
+
+<div class="table-container" id="classement">
+
+    <div class="table-header">
+
+        <h2>🏆 Classement des élèves</h2>
+
+        <div class="header-actions">
+
+            <span class="total-resultats">
+                📊 {{ total_resultats }} résultat{{ total_resultats|pluralize }}
+            </span>
+
+            <a
+                href="{% url 'export_statistiques_excel' %}{% if querystring %}?{{ querystring }}{% endif %}"
+                class="btn-export-sm"
+            >
+                📊 Exporter en Excel
+            </a>
+
+        </div>
+
+    </div>
+
+
+    <div class="table-wrapper">
+
+        <table class="classement-table">
+
+            <thead>
+                <tr>
+                    <th>Rang</th>
+                    <th>Matricule</th>
+                    <th>Élève</th>
+                    <th>Classe</th>
+                    <th>Moyenne</th>
+                    <th>Performance</th>
+                </tr>
+            </thead>
+
+            <tbody>
+
+                {% for resultat in classement %}
+
+                    <tr class="{% if resultat.rang == 1 %}podium-1{% elif resultat.rang == 2 %}podium-2{% elif resultat.rang == 3 %}podium-3{% endif %}">
+
+                        <td class="podium-rang">
+                            {% if resultat.rang == 1 %}🥇{% elif resultat.rang == 2 %}🥈{% elif resultat.rang == 3 %}🥉{% else %}{{ resultat.rang|default:"-" }}{% endif %}
+                        </td>
+
+                        <td>{{ resultat.eleve.matricule }}</td>
+
+                        <td>{{ resultat.eleve.nom }} {{ resultat.eleve.prenoms }}</td>
+
+                        <td>{{ resultat.classe.nom }}</td>
+
+                        <td class="moyenne">{{ resultat.moyenne_trimestrielle|default:"-" }}</td>
+
+                        <td>
+                            <span class="performance-badge {{ resultat.performance_css }}">
+                                {{ resultat.performance }}
+                            </span>
+                        </td>
+
+                    </tr>
+
+                {% empty %}
+
+                    <tr>
+                        <td colspan="6">Aucun résultat trouvé.</td>
+                    </tr>
+
+                {% endfor %}
+
+            </tbody>
+
+        </table>
+
+    </div>
+
+
+    <!-- ========= PAGINATION ========= -->
+
+    {% if classement.paginator.num_pages > 1 %}
+
+        <div class="pagination">
+
+            {% if classement.has_previous %}
+                <a
+                    href="?{% if querystring %}{{ querystring }}&{% endif %}page={{ classement.previous_page_number }}#classement"
+                    class="pagination-link"
+                >
+                    &laquo; Précédent
+                </a>
+            {% else %}
+                <span class="pagination-link disabled">&laquo; Précédent</span>
+            {% endif %}
+
+            <span class="pagination-info">
+                Page {{ classement.number }} sur {{ classement.paginator.num_pages }}
+            </span>
+
+            {% if classement.has_next %}
+                <a
+                    href="?{% if querystring %}{{ querystring }}&{% endif %}page={{ classement.next_page_number }}#classement"
+                    class="pagination-link"
+                >
+                    Suivant &raquo;
+                </a>
+            {% else %}
+                <span class="pagination-link disabled">Suivant &raquo;</span>
+            {% endif %}
+
+        </div>
+
+    {% endif %}
+
+</div>
+
+{% endblock %}

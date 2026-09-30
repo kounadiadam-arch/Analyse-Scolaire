@@ -1,0 +1,774 @@
+{% extends 'base.html' %}
+
+{% block title %}Statistiques par niveau{% endblock %}
+
+
+{% block extra_style %}
+    <style>
+
+        /* =========================
+           BOITE DE FILTRES
+        ========================= */
+
+        .filter-box {
+            background: white;
+            padding: 22px;
+            border-radius: 10px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+            margin-bottom: 25px;
+        }
+
+        .filter-box h2 {
+            margin-bottom: 18px;
+        }
+
+        .filter-box-header {
+
+            display: flex;
+
+            align-items: center;
+
+            justify-content: space-between;
+
+            gap: 15px;
+
+        }
+
+
+        .filter-box-header h2 {
+
+            margin-bottom: 0;
+
+        }
+
+        /* =========================
+           FILTRES
+        ========================= */
+
+        .filters {
+
+            display: flex;
+
+            gap: 12px;
+
+            align-items: end;
+
+            margin-bottom: 15px;
+
+        }
+
+
+        .filters div {
+
+            flex: 1;
+
+        }
+
+
+        .filters label {
+
+            display: block;
+
+            margin-bottom: 6px;
+
+            font-size: 14px;
+
+            font-weight: bold;
+
+        }
+
+
+        .filters select {
+
+            width: 100%;
+
+            padding: 10px;
+
+            border: 1px solid #ccc;
+
+            border-radius: 6px;
+
+            background: white;
+
+        }
+
+
+        /* =========================
+           BOUTONS
+        ========================= */
+
+        button {
+
+            padding: 10px 20px;
+
+            border: none;
+
+            border-radius: 6px;
+
+            cursor: pointer;
+
+            font-weight: bold;
+
+        }
+
+
+        .import-box button {
+
+            background: #198754;
+
+            color: white;
+
+        }
+
+
+        .filter-box button {
+
+            background: #0d6efd;
+
+            color: white;
+
+        }
+
+
+        button:hover {
+
+            opacity: 0.9;
+
+        }
+
+
+        /* Masquer le bouton Analyser puisqu'il n'est plus nécessaire */
+        .filter-box form > button {
+            display: none;
+        }
+
+        /* =========================
+           CLASSEMENT
+        ========================= */
+
+        .table-container {
+
+            background: white;
+
+            padding: 20px;
+
+            border-radius: 10px;
+
+            box-shadow:
+                0 2px 8px rgba(0, 0, 0, 0.08);
+
+        }
+
+
+        .table-container h2 {
+
+            margin-bottom: 20px;
+
+        }
+
+
+        .table-wrapper {
+
+            overflow-x: auto;
+
+        }
+
+
+
+        /* =========================
+           FILTRES ACTIFS + PÉRIODE
+        ========================= */
+
+        .filter-actions {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            flex-wrap: wrap;
+            margin-top: 14px;
+        }
+
+        .btn-reset {
+            display: inline-block;
+            padding: 10px 16px;
+            border-radius: 6px;
+            background: #6c757d;
+            color: white;
+            text-decoration: none;
+            font-weight: bold;
+        }
+
+        .btn-reset:hover {
+            opacity: 0.9;
+        }
+
+        .active-filters {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 8px;
+            margin: 14px 0 8px;
+        }
+
+        .active-filters-title {
+            font-size: 14px;
+            font-weight: bold;
+            color: #555;
+        }
+
+        .filter-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 7px;
+            padding: 6px 10px;
+            border-radius: 999px;
+            background: #e7f1ff;
+            color: #0b5ed7;
+            border: 1px solid #b6d4fe;
+            font-size: 13px;
+            font-weight: bold;
+        }
+
+        .period-banner {
+            margin: 0 0 25px;
+            padding: 13px 18px;
+            border-radius: 8px;
+            background: #eef5ff;
+            border-left: 4px solid #0d6efd;
+            color: #17365d;
+        }
+
+        .period-banner strong {
+            margin-right: 6px;
+        }
+
+        .search-box {
+            margin-top: 15px;
+        }
+
+        .search-box label {
+            display: block;
+            margin-bottom: 6px;
+            font-size: 14px;
+            font-weight: bold;
+        }
+
+        .search-box input {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+
+        .search-box input:focus {
+            outline: none;
+            border-color: #0d6efd;
+            box-shadow: 0 0 0 2px rgba(13, 110, 253, 0.12);
+        }
+
+        .message {
+            padding: 15px;
+            margin-bottom: 20px;
+            border-radius: 8px;
+            font-weight: bold;
+        }
+
+        .message.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        table.stats-effectifs {
+
+            width: 100%;
+
+            border-collapse: collapse;
+
+            font-size: 13px;
+
+            min-width: 900px;
+
+        }
+
+
+        table.stats-effectifs th,
+        table.stats-effectifs td {
+
+            border: 1px solid #333;
+
+            padding: 6px 10px;
+
+            text-align: center;
+
+            white-space: nowrap;
+
+        }
+
+
+        table.stats-effectifs thead th {
+
+            background: #2c3e50;
+
+            color: white;
+
+            font-weight: bold;
+
+        }
+
+
+        table.stats-effectifs td:first-child,
+        table.stats-effectifs th:first-child {
+
+            text-align: left;
+
+            font-weight: bold;
+
+            background: #f8f9fa;
+
+        }
+
+
+        table.stats-effectifs thead th:first-child {
+
+            background: #2c3e50;
+
+        }
+
+
+        table.stats-effectifs tbody tr:nth-child(even) {
+
+            background: #fafafa;
+
+        }
+
+
+        table.stats-effectifs tr.total-row td {
+
+            font-weight: bold;
+
+            background: #dfe9f5;
+
+        }
+
+
+        table.stats-effectifs tr.total-row td:first-child {
+
+            background: #c5d7ec;
+
+        }
+
+
+        table.stats-effectifs tr.total-general td {
+
+            background: #b8cce4;
+
+        }
+
+
+        table.stats-effectifs tr.total-general td:first-child {
+
+            background: #9cb9dd;
+
+        }
+
+
+        /* =========================
+           TABLEAU STATISTIQUES PAR NIVEAU
+        ========================= */
+
+        .stats-niveaux-wrapper {
+
+            overflow-x: auto;
+
+        }
+
+
+        table.stats-niveaux {
+
+            width: 100%;
+
+            border-collapse: collapse;
+
+            font-size: 13px;
+
+            min-width: 1400px;
+
+        }
+
+
+        table.stats-niveaux th,
+        table.stats-niveaux td {
+
+            border: 1px solid #333;
+
+            padding: 6px 8px;
+
+            text-align: center;
+
+            white-space: nowrap;
+
+        }
+
+
+        table.stats-niveaux thead th {
+
+            background: #2c3e50;
+
+            color: white;
+
+            font-weight: bold;
+
+        }
+
+
+        table.stats-niveaux td:first-child,
+        table.stats-niveaux th:first-child {
+
+            text-align: left;
+
+            position: sticky;
+
+            left: 0;
+
+            background: #f8f9fa;
+
+            font-weight: bold;
+
+            z-index: 1;
+
+        }
+
+
+        table.stats-niveaux thead th:first-child {
+
+            background: #2c3e50;
+
+            z-index: 2;
+
+        }
+
+
+        table.stats-niveaux tbody tr:nth-child(even) {
+
+            background: #fafafa;
+
+        }
+
+
+        table.stats-niveaux tr.total-row td {
+
+            font-weight: bold;
+
+            background: #dfe9f5;
+
+        }
+
+
+        table.stats-niveaux tr.total-row td:first-child {
+
+            background: #c5d7ec;
+
+        }
+
+
+        table.stats-niveaux tr.total-general td {
+
+            background: #b8cce4;
+
+        }
+
+
+        table.stats-niveaux tr.total-general td:first-child {
+
+            background: #9cb9dd;
+
+        }
+
+    </style>
+{% endblock %}
+
+
+{% block content %}
+
+<h1>📈 Statistiques</h1>
+
+{% if messages %}
+    {% for message in messages %}
+        <div class="message {{ message.tags }}">{{ message }}</div>
+    {% endfor %}
+{% endif %}
+
+
+<div class="filter-box">
+
+    <div class="filter-box-header">
+        <h2>🔎 Filtrer les statistiques</h2>
+    </div>
+
+    <form method="GET" id="filterForm">
+
+        <div class="filters">
+
+            <!-- ANNÉE -->
+            <div>
+                <label for="annee">Année scolaire</label>
+                <select name="annee" id="annee" onchange="document.getElementById('filterForm').submit();">
+                    <option value="">Toutes les années</option>
+                    {% for annee in annees %}
+                        <option value="{{ annee.id }}" {% if annee_selectionnee == annee.id|stringformat:"s" %}selected{% endif %}>
+                            {{ annee.nom }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <!-- NIVEAU -->
+            <div>
+                <label for="niveau">Niveau</label>
+                <select name="niveau" id="niveau" onchange="document.getElementById('filterForm').submit();">
+                    <option value="">Tous les niveaux</option>
+                    {% for niveau in niveaux %}
+                        <option value="{{ niveau }}" {% if niveau_selectionne == niveau %}selected{% endif %}>
+                            {{ niveau }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <!-- CLASSE -->
+            <div>
+                <label for="classe">Classe</label>
+                <select name="classe" id="classe" onchange="document.getElementById('filterForm').submit();">
+                    <option value="">Toutes les classes</option>
+                    {% for classe in classes %}
+                        <option value="{{ classe.id }}" {% if classe_selectionnee == classe.id|stringformat:"s" %}selected{% endif %}>
+                            {{ classe.nom }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <!-- TRIMESTRE -->
+            <div>
+                <label for="trimestre">Trimestre</label>
+                <select name="trimestre" id="trimestre" onchange="document.getElementById('filterForm').submit();">
+                    <option value="">Tous les trimestres</option>
+                    <option value="T1" {% if trimestre_selectionne == "T1" %}selected{% endif %}>Trimestre 1</option>
+                    <option value="T2" {% if trimestre_selectionne == "T2" %}selected{% endif %}>Trimestre 2</option>
+                    <option value="T3" {% if trimestre_selectionne == "T3" %}selected{% endif %}>Trimestre 3</option>
+                </select>
+            </div>
+
+        </div>
+
+        <div class="filter-actions">
+            <a href="{% url 'statistiques' %}" class="btn-reset">↺ Réinitialiser les filtres</a>
+        </div>
+
+    </form>
+
+    {% if filtres_actifs %}
+        <div class="active-filters">
+            <span class="active-filters-title">Filtres actifs :</span>
+            {% for filtre in filtres_actifs %}
+                <span class="filter-badge">{{ filtre.libelle }} : {{ filtre.valeur }}</span>
+            {% endfor %}
+        </div>
+    {% endif %}
+
+</div>
+
+<!-- =========================
+     EFFECTIFS / AFFECTÉS / REDOUBLANTS PAR NIVEAU
+========================= -->
+
+<div class="table-container" style="margin-bottom: 30px;">
+
+
+    <h2>
+
+        👥 Effectifs, affectés et redoublants par niveau
+
+    </h2>
+
+
+    <div class="stats-niveaux-wrapper">
+
+
+        <table class="stats-effectifs">
+
+
+            <thead>
+
+                <tr>
+
+                    <th rowspan="2">Niveau</th>
+
+                    <th colspan="3">Effectif</th>
+                    <th colspan="3">Affectés</th>
+                    <th colspan="3">Redoublants</th>
+
+                </tr>
+
+                <tr>
+
+                    <th>G</th><th>F</th><th>Total</th>
+                    <th>G</th><th>F</th><th>Total</th>
+                    <th>G</th><th>F</th><th>Total</th>
+
+                </tr>
+
+            </thead>
+
+
+            <tbody>
+
+                {% for ligne in tableau_effectifs_niveaux %}
+
+                    <tr {% if ligne.is_total %}class="total-row{% if ligne.niveau == "Total Général" %} total-general{% endif %}"{% endif %}>
+
+                        <td>{{ ligne.niveau }}</td>
+
+                        <td>{{ ligne.effectif_g }}</td>
+                        <td>{{ ligne.effectif_f }}</td>
+                        <td>{{ ligne.effectif_t }}</td>
+
+                        <td>{{ ligne.affectes_g }}</td>
+                        <td>{{ ligne.affectes_f }}</td>
+                        <td>{{ ligne.affectes_t }}</td>
+
+                        <td>{{ ligne.redoublants_g }}</td>
+                        <td>{{ ligne.redoublants_f }}</td>
+                        <td>{{ ligne.redoublants_t }}</td>
+
+                    </tr>
+
+                {% empty %}
+
+                    <tr>
+                        <td colspan="10">Aucune donnée pour les filtres sélectionnés.</td>
+                    </tr>
+
+                {% endfor %}
+
+            </tbody>
+
+
+        </table>
+
+
+    </div>
+
+
+</div>
+
+
+<!-- =========================
+     STATISTIQUES PAR NIVEAU
+========================= -->
+
+<div class="table-container" style="margin-bottom: 30px;">
+
+
+    <h2>
+
+        📈 Statistiques par niveau
+
+    </h2>
+
+
+    <div class="stats-niveaux-wrapper">
+
+
+        <table class="stats-niveaux">
+
+
+            <thead>
+
+                <tr>
+
+                    <th rowspan="2">Niveaux</th>
+                    <th rowspan="2">Nombres<br>de classes</th>
+
+                    <th colspan="3">Effectif classé</th>
+                    <th colspan="3">Effectif non classé</th>
+
+                    <th colspan="4">MOY TRIM &ge; 10</th>
+                    <th colspan="4">08.50 &le; MOY TRIM &lt; 10</th>
+                    <th colspan="4">MOY TRIM &lt; 08.50</th>
+
+                    <th rowspan="2">Moyenne<br>par niveau</th>
+
+                </tr>
+
+                <tr>
+
+                    <th>F</th><th>G</th><th>T</th>
+                    <th>F</th><th>G</th><th>T</th>
+                    <th>F</th><th>G</th><th>T</th><th>%</th>
+                    <th>F</th><th>G</th><th>T</th><th>%</th>
+                    <th>F</th><th>G</th><th>T</th><th>%</th>
+
+                </tr>
+
+            </thead>
+
+
+            <tbody>
+
+                {% for ligne in tableau_statistiques_niveaux %}
+
+                    <tr {% if ligne.is_total %}class="total-row{% if ligne.niveau == "Total général" %} total-general{% endif %}"{% endif %}>
+
+                        <td>{{ ligne.niveau }}</td>
+                        <td>{{ ligne.nombre_classes }}</td>
+
+                        <td>{{ ligne.classe_f }}</td>
+                        <td>{{ ligne.classe_g }}</td>
+                        <td>{{ ligne.classe_t }}</td>
+
+                        <td>{{ ligne.non_classe_f }}</td>
+                        <td>{{ ligne.non_classe_g }}</td>
+                        <td>{{ ligne.non_classe_t }}</td>
+
+                        <td>{{ ligne.sup10_f }}</td>
+                        <td>{{ ligne.sup10_g }}</td>
+                        <td>{{ ligne.sup10_t }}</td>
+                        <td>{{ ligne.sup10_pct }}%</td>
+
+                        <td>{{ ligne.moy_f }}</td>
+                        <td>{{ ligne.moy_g }}</td>
+                        <td>{{ ligne.moy_t }}</td>
+                        <td>{{ ligne.moy_pct }}%</td>
+
+                        <td>{{ ligne.inf_f }}</td>
+                        <td>{{ ligne.inf_g }}</td>
+                        <td>{{ ligne.inf_t }}</td>
+                        <td>{{ ligne.inf_pct }}%</td>
+
+                        <td class="moyenne">{{ ligne.moyenne_niveau|default:"-" }}</td>
+
+                    </tr>
+
+                {% empty %}
+
+                    <tr>
+                        <td colspan="21">Aucune donnée pour les filtres sélectionnés.</td>
+                    </tr>
+
+                {% endfor %}
+
+            </tbody>
+
+
+        </table>
+
+
+    </div>
+
+
+</div>
+
+
+{% endblock %}

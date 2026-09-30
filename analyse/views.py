@@ -780,10 +780,6 @@ def dashboard(request):
         resultats
     )
 
-    tableau_effectifs_niveaux = calculer_tableau_effectifs_niveaux(
-        resultats
-    )
-
     # -----------------------------
     # LIBELLÉS DES FILTRES ACTIFS
     # -----------------------------
@@ -943,8 +939,6 @@ def dashboard(request):
 
         "tableau_statistiques_niveaux": tableau_statistiques_niveaux,
 
-        "tableau_effectifs_niveaux": tableau_effectifs_niveaux,
-
         "donnees_graphiques": donnees_graphiques,
 
         "eleves_sous_10": eleves_sous_10,
@@ -960,6 +954,592 @@ def dashboard(request):
         "analyse/dashboard.html",
         context
     )
+
+
+def statistiques(request):
+    """Page dédiée aux statistiques par niveau : effectifs / affectés /
+    redoublants, ainsi que le tableau de statistiques par niveau,
+    en respectant les mêmes filtres que le dashboard (année, niveau,
+    classe, trimestre)."""
+
+    # -----------------------------
+    # FILTRES (identiques à la vue dashboard)
+    # -----------------------------
+
+    annee_id = request.GET.get("annee")
+    classe_id = request.GET.get("classe")
+    trimestre = request.GET.get("trimestre")
+    niveau = request.GET.get("niveau")
+
+    annees = AnneeScolaire.objects.all().order_by("-nom")
+    classes = Classe.objects.all().order_by("nom")
+
+    niveaux_uniques = Classe.objects.values_list(
+        'niveau', flat=True
+    ).distinct().exclude(niveau='').order_by('niveau')
+
+    resultats = Resultat.objects.select_related(
+        "eleve",
+        "annee_scolaire",
+        "classe"
+    )
+
+    if niveau:
+        resultats = resultats.filter(classe__niveau=niveau)
+
+    if annee_id:
+        resultats = resultats.filter(annee_scolaire_id=annee_id)
+
+    if classe_id:
+        resultats = resultats.filter(classe_id=classe_id)
+
+    if trimestre:
+        resultats = resultats.filter(trimestre=trimestre)
+
+    # Si un niveau est sélectionné, on filtre aussi la liste des classes
+    if niveau:
+        classes = classes.filter(niveau=niveau)
+
+    # -----------------------------
+    # TABLEAUX
+    # -----------------------------
+
+    tableau_statistiques_niveaux = calculer_tableau_statistiques_niveaux(
+        resultats
+    )
+
+    tableau_effectifs_niveaux = calculer_tableau_effectifs_niveaux(
+        resultats
+    )
+
+    # -----------------------------
+    # LIBELLÉS DES FILTRES ACTIFS + PÉRIODE
+    # -----------------------------
+
+    filtres_actifs = []
+
+    annee_obj = None
+    if annee_id:
+        annee_obj = AnneeScolaire.objects.filter(id=annee_id).first()
+        if annee_obj:
+            filtres_actifs.append({
+                "libelle": "Année scolaire",
+                "valeur": annee_obj.nom,
+            })
+
+    if niveau:
+        filtres_actifs.append({
+            "libelle": "Niveau",
+            "valeur": niveau,
+        })
+
+    classe_obj = None
+    if classe_id:
+        classe_obj = Classe.objects.filter(id=classe_id).first()
+        if classe_obj:
+            filtres_actifs.append({
+                "libelle": "Classe",
+                "valeur": classe_obj.nom,
+            })
+
+    trimestre_labels = {
+        "T1": "Trimestre 1",
+        "T2": "Trimestre 2",
+        "T3": "Trimestre 3",
+    }
+
+    if trimestre:
+        filtres_actifs.append({
+            "libelle": "Trimestre",
+            "valeur": trimestre_labels.get(trimestre, trimestre),
+        })
+
+    periode_annee = annee_obj.nom if annee_obj else "Toutes les années"
+    periode_trimestre = trimestre_labels.get(
+        trimestre,
+        "Tous les trimestres"
+    )
+
+    if annee_obj and trimestre:
+        periode_analysee = f"{periode_annee} — {periode_trimestre}"
+    elif annee_obj:
+        periode_analysee = f"{periode_annee} — tous les trimestres"
+    elif trimestre:
+        periode_analysee = f"Toutes les années — {periode_trimestre}"
+    else:
+        periode_analysee = "Toutes les années — tous les trimestres"
+
+    context = {
+
+        "annees": annees,
+        "classes": classes,
+        "niveaux": niveaux_uniques,
+
+        "annee_selectionnee": annee_id,
+        "classe_selectionnee": classe_id,
+        "trimestre_selectionne": trimestre,
+        "niveau_selectionne": niveau,
+
+        "filtres_actifs": filtres_actifs,
+        "periode_analysee": periode_analysee,
+
+        "tableau_statistiques_niveaux": tableau_statistiques_niveaux,
+        "tableau_effectifs_niveaux": tableau_effectifs_niveaux,
+
+    }
+
+    return render(
+        request,
+        "analyse/statistiques.html",
+        context
+    )
+
+
+def meilleurs_eleves(request):
+    """Page dédiée affichant les 5 meilleurs élèves (moyenne la plus
+    élevée), en respectant les mêmes filtres que le dashboard (année,
+    niveau, classe, trimestre)."""
+
+    # -----------------------------
+    # FILTRES (identiques à la vue dashboard)
+    # -----------------------------
+
+    annee_id = request.GET.get("annee")
+    classe_id = request.GET.get("classe")
+    trimestre = request.GET.get("trimestre")
+    niveau = request.GET.get("niveau")
+
+    annees = AnneeScolaire.objects.all().order_by("-nom")
+    classes = Classe.objects.all().order_by("nom")
+
+    niveaux_uniques = Classe.objects.values_list(
+        'niveau', flat=True
+    ).distinct().exclude(niveau='').order_by('niveau')
+
+    resultats = Resultat.objects.select_related(
+        "eleve",
+        "annee_scolaire",
+        "classe"
+    )
+
+    if niveau:
+        resultats = resultats.filter(classe__niveau=niveau)
+
+    if annee_id:
+        resultats = resultats.filter(annee_scolaire_id=annee_id)
+
+    if classe_id:
+        resultats = resultats.filter(classe_id=classe_id)
+
+    if trimestre:
+        resultats = resultats.filter(trimestre=trimestre)
+
+    # Si un niveau est sélectionné, on filtre aussi la liste des classes
+    if niveau:
+        classes = classes.filter(niveau=niveau)
+
+    # -----------------------------
+    # TOP 5 DES MEILLEURS ÉLÈVES
+    # -----------------------------
+
+    # Une moyenne trimestrielle égale à 0 correspond à un élève non
+    # classé : on l'exclut pour ne pas fausser le classement des
+    # meilleurs élèves.
+    meilleurs_eleves_liste = list(
+        resultats
+        .exclude(moyenne_trimestrielle=0)
+        .order_by("-moyenne_trimestrielle", "eleve__nom", "eleve__prenoms")[:5]
+    )
+
+    for rang, resultat in enumerate(meilleurs_eleves_liste, start=1):
+        resultat.rang = rang
+
+        moyenne = resultat.moyenne_trimestrielle
+
+        if moyenne is not None and moyenne >= 16:
+            resultat.performance = "Excellent"
+            resultat.performance_css = "excellent"
+        elif moyenne is not None and moyenne >= 10:
+            resultat.performance = "Satisfaisant"
+            resultat.performance_css = "satisfaisant"
+        else:
+            resultat.performance = "À accompagner"
+            resultat.performance_css = "a-accompagner"
+
+    # -----------------------------
+    # LIBELLÉS DES FILTRES ACTIFS + PÉRIODE
+    # -----------------------------
+
+    filtres_actifs = []
+
+    annee_obj = None
+    if annee_id:
+        annee_obj = AnneeScolaire.objects.filter(id=annee_id).first()
+        if annee_obj:
+            filtres_actifs.append({
+                "libelle": "Année scolaire",
+                "valeur": annee_obj.nom,
+            })
+
+    if niveau:
+        filtres_actifs.append({
+            "libelle": "Niveau",
+            "valeur": niveau,
+        })
+
+    classe_obj = None
+    if classe_id:
+        classe_obj = Classe.objects.filter(id=classe_id).first()
+        if classe_obj:
+            filtres_actifs.append({
+                "libelle": "Classe",
+                "valeur": classe_obj.nom,
+            })
+
+    trimestre_labels = {
+        "T1": "Trimestre 1",
+        "T2": "Trimestre 2",
+        "T3": "Trimestre 3",
+    }
+
+    if trimestre:
+        filtres_actifs.append({
+            "libelle": "Trimestre",
+            "valeur": trimestre_labels.get(trimestre, trimestre),
+        })
+
+    periode_annee = annee_obj.nom if annee_obj else "Toutes les années"
+    periode_trimestre = trimestre_labels.get(
+        trimestre,
+        "Tous les trimestres"
+    )
+
+    if annee_obj and trimestre:
+        periode_analysee = f"{periode_annee} — {periode_trimestre}"
+    elif annee_obj:
+        periode_analysee = f"{periode_annee} — tous les trimestres"
+    elif trimestre:
+        periode_analysee = f"Toutes les années — {periode_trimestre}"
+    else:
+        periode_analysee = "Toutes les années — tous les trimestres"
+
+    context = {
+
+        "annees": annees,
+        "classes": classes,
+        "niveaux": niveaux_uniques,
+
+        "annee_selectionnee": annee_id,
+        "classe_selectionnee": classe_id,
+        "trimestre_selectionne": trimestre,
+        "niveau_selectionne": niveau,
+
+        "filtres_actifs": filtres_actifs,
+        "periode_analysee": periode_analysee,
+
+        "meilleurs_eleves": meilleurs_eleves_liste,
+
+    }
+
+    return render(
+        request,
+        "analyse/meilleurs_eleves.html",
+        context
+    )
+
+
+# =====================================================================
+# FILTRES COMMUNS AUX PAGES "RÉSULTATS" ET "ÉLÈVES À SUIVRE"
+# =====================================================================
+#
+# Ces deux pages reprennent exactement les mêmes filtres que le
+# dashboard (année, niveau, classe, trimestre, recherche). Le code
+# ci-dessous évite de dupliquer ce bloc dans chaque vue.
+
+TRIMESTRE_LABELS = {
+    "T1": "Trimestre 1",
+    "T2": "Trimestre 2",
+    "T3": "Trimestre 3",
+}
+
+
+def _preparer_filtres_page(request):
+    """Applique les filtres GET sur les résultats et renvoie
+    (resultats, contexte) où `contexte` contient tout ce dont le
+    formulaire de filtres a besoin (listes, valeurs sélectionnées,
+    filtres actifs, période analysée, chaîne de requête)."""
+
+    annee_id = request.GET.get("annee")
+    classe_id = request.GET.get("classe")
+    trimestre = request.GET.get("trimestre")
+    niveau = request.GET.get("niveau")
+    recherche = request.GET.get("recherche", "").strip()
+
+    annees = AnneeScolaire.objects.all().order_by("-nom")
+    classes = Classe.objects.all().order_by("nom")
+
+    niveaux_uniques = Classe.objects.values_list(
+        "niveau", flat=True
+    ).distinct().exclude(niveau="").order_by("niveau")
+
+    resultats = Resultat.objects.select_related(
+        "eleve",
+        "annee_scolaire",
+        "classe"
+    )
+
+    if niveau:
+        resultats = resultats.filter(classe__niveau=niveau)
+
+    if annee_id:
+        resultats = resultats.filter(annee_scolaire_id=annee_id)
+
+    if classe_id:
+        resultats = resultats.filter(classe_id=classe_id)
+
+    if trimestre:
+        resultats = resultats.filter(trimestre=trimestre)
+
+    if recherche:
+        resultats = resultats.filter(
+            Q(eleve__nom__icontains=recherche)
+            | Q(eleve__prenoms__icontains=recherche)
+            | Q(eleve__matricule__icontains=recherche)
+        )
+
+    if niveau:
+        classes = classes.filter(niveau=niveau)
+
+    # ---- Libellés des filtres actifs ----
+
+    filtres_actifs = []
+
+    annee_obj = None
+    if annee_id:
+        annee_obj = AnneeScolaire.objects.filter(id=annee_id).first()
+        if annee_obj:
+            filtres_actifs.append({
+                "libelle": "Année scolaire",
+                "valeur": annee_obj.nom,
+            })
+
+    if niveau:
+        filtres_actifs.append({"libelle": "Niveau", "valeur": niveau})
+
+    if classe_id:
+        classe_obj = Classe.objects.filter(id=classe_id).first()
+        if classe_obj:
+            filtres_actifs.append({
+                "libelle": "Classe",
+                "valeur": classe_obj.nom,
+            })
+
+    if trimestre:
+        filtres_actifs.append({
+            "libelle": "Trimestre",
+            "valeur": TRIMESTRE_LABELS.get(trimestre, trimestre),
+        })
+
+    if recherche:
+        filtres_actifs.append({"libelle": "Recherche", "valeur": recherche})
+
+    # ---- Période analysée ----
+
+    periode_annee = annee_obj.nom if annee_obj else "Toutes les années"
+    periode_trimestre = TRIMESTRE_LABELS.get(
+        trimestre, "Tous les trimestres"
+    )
+
+    if annee_obj and trimestre:
+        periode_analysee = f"{periode_annee} — {periode_trimestre}"
+    elif annee_obj:
+        periode_analysee = f"{periode_annee} — tous les trimestres"
+    elif trimestre:
+        periode_analysee = f"Toutes les années — {periode_trimestre}"
+    else:
+        periode_analysee = "Toutes les années — tous les trimestres"
+
+    # Chaîne de requête sans le numéro de page (liens de pagination
+    # et liens d'export).
+    querydict = request.GET.copy()
+    querydict.pop("page", None)
+
+    contexte = {
+        "annees": annees,
+        "classes": classes,
+        "niveaux": niveaux_uniques,
+
+        "annee_selectionnee": annee_id,
+        "classe_selectionnee": classe_id,
+        "trimestre_selectionne": trimestre,
+        "niveau_selectionne": niveau,
+        "recherche": recherche,
+
+        "filtres_actifs": filtres_actifs,
+        "periode_analysee": periode_analysee,
+        "querystring": querydict.urlencode(),
+    }
+
+    return resultats, contexte
+
+
+def _definir_performance(resultat):
+    """Ajoute `performance` et `performance_css` à un résultat
+    (mêmes seuils que le classement du dashboard)."""
+
+    moyenne = resultat.moyenne_trimestrielle
+
+    if moyenne is None:
+        resultat.performance = "À accompagner"
+        resultat.performance_css = "a-accompagner"
+    elif moyenne >= 16:
+        resultat.performance = "Excellent"
+        resultat.performance_css = "excellent"
+    elif moyenne >= 10:
+        resultat.performance = "Satisfaisant"
+        resultat.performance_css = "satisfaisant"
+    else:
+        resultat.performance = "À accompagner"
+        resultat.performance_css = "a-accompagner"
+
+
+# =====================================================================
+# PAGE "RÉSULTATS" : CLASSEMENT COMPLET DES ÉLÈVES
+# =====================================================================
+
+def resultats_eleves(request):
+    """Page dédiée au classement des élèves (même contenu que le
+    bloc « Classement des élèves » du dashboard, qui y est conservé),
+    avec les mêmes filtres et une pagination de 15 élèves par page."""
+
+    resultats, contexte = _preparer_filtres_page(request)
+
+    # ---- Indicateurs de synthèse ----
+
+    # Une moyenne de 0 correspond à un élève non classé : elle est
+    # exclue des indicateurs (comme sur le dashboard).
+    statistiques = resultats.aggregate(nombre_eleves=Count("id"))
+
+    statistiques.update(
+        resultats.exclude(moyenne_trimestrielle=0).aggregate(
+            moyenne_classe=Avg("moyenne_trimestrielle"),
+            meilleure_moyenne=Max("moyenne_trimestrielle"),
+            plus_faible_moyenne=Min("moyenne_trimestrielle"),
+        )
+    )
+
+    # ---- Classement (rang calculé avant la pagination) ----
+
+    classement_liste = list(
+        resultats.order_by(
+            "-moyenne_trimestrielle",
+            "eleve__nom",
+            "eleve__prenoms",
+        )
+    )
+
+    for rang, resultat in enumerate(classement_liste, start=1):
+        resultat.rang = rang
+        _definir_performance(resultat)
+
+    paginator = Paginator(classement_liste, 15)
+    classement = paginator.get_page(request.GET.get("page"))
+
+    contexte.update({
+        "classement": classement,
+        "total_resultats": len(classement_liste),
+        "statistiques": statistiques,
+    })
+
+    return render(request, "analyse/resultats.html", contexte)
+
+
+# =====================================================================
+# PAGE "ÉLÈVES À SUIVRE"
+# =====================================================================
+
+def eleves_a_suivre(request):
+    """Page dédiée au suivi pédagogique : liste complète des élèves
+    dont la moyenne est inférieure à 10, matières les plus faibles et
+    classes ayant le plus faible taux de réussite, selon les mêmes
+    filtres que le dashboard."""
+
+    resultats, contexte = _preparer_filtres_page(request)
+
+    # ---- Élèves sous 10 (même définition que sur le dashboard et
+    #      que l'export Excel) ----
+
+    eleves_sous_10 = list(
+        resultats
+        .filter(moyenne_trimestrielle__lt=10)
+        .order_by("moyenne_trimestrielle", "eleve__nom", "eleve__prenoms")
+    )
+
+    for rang, resultat in enumerate(eleves_sous_10, start=1):
+        resultat.rang = rang
+
+    paginator = Paginator(eleves_sous_10, 15)
+    liste_eleves = paginator.get_page(request.GET.get("page"))
+
+    # ---- Matières les plus faibles ----
+
+    statistiques_mat = calculer_statistiques_matieres(resultats)
+    matieres_faibles = sorted(
+        [m for m in statistiques_mat if m["moyenne"] is not None],
+        key=lambda m: m["moyenne"]
+    )[:5]
+
+    # ---- Classes ayant le plus faible taux de réussite ----
+
+    lignes_classes = (
+        resultats
+        .filter(moyenne_trimestrielle__gt=0)
+        .order_by()
+        .values("classe_id", "classe__nom")
+        .annotate(
+            total=Count("id"),
+            reussis=Count(
+                "id",
+                filter=Q(moyenne_trimestrielle__gte=SEUIL_REUSSITE)
+            ),
+        )
+    )
+
+    classes_faibles = [
+        {
+            "classe": ligne["classe__nom"],
+            "total": ligne["total"],
+            "reussis": ligne["reussis"],
+            "taux_reussite": round(
+                ligne["reussis"] / ligne["total"] * 100, 2
+            ),
+        }
+        for ligne in lignes_classes
+    ]
+
+    classes_faibles.sort(key=lambda c: (c["taux_reussite"], c["classe"]))
+    classes_faibles = classes_faibles[:10]
+
+    # ---- Indicateurs de synthèse ----
+
+    total_resultats = resultats.count()
+    nombre_sous_10 = len(eleves_sous_10)
+
+    part_sous_10 = (
+        round(nombre_sous_10 / total_resultats * 100, 2)
+        if total_resultats else 0
+    )
+
+    contexte.update({
+        "liste_eleves": liste_eleves,
+        "total_resultats": total_resultats,
+        "nombre_sous_10": nombre_sous_10,
+        "part_sous_10": part_sous_10,
+        "matieres_faibles": matieres_faibles,
+        "classes_faibles": classes_faibles,
+    })
+
+    return render(request, "analyse/eleves_a_suivre.html", contexte)
 
 
 def statistiques_matieres(request):

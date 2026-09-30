@@ -1,0 +1,546 @@
+{% extends 'base.html' %}
+
+{% block title %}Meilleurs élèves{% endblock %}
+
+
+{% block extra_style %}
+    <style>
+
+        /* =========================
+           BOITE DE FILTRES
+        ========================= */
+
+        .filter-box {
+            background: white;
+            padding: 22px;
+            border-radius: 10px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+            margin-bottom: 25px;
+        }
+
+        .filter-box h2 {
+            margin-bottom: 18px;
+        }
+
+        .filter-box-header {
+
+            display: flex;
+
+            align-items: center;
+
+            justify-content: space-between;
+
+            gap: 15px;
+
+        }
+
+
+        .filter-box-header h2 {
+
+            margin-bottom: 0;
+
+        }
+
+        /* =========================
+           FILTRES
+        ========================= */
+
+        .filters {
+
+            display: flex;
+
+            gap: 12px;
+
+            align-items: end;
+
+            margin-bottom: 15px;
+
+        }
+
+
+        .filters div {
+
+            flex: 1;
+
+        }
+
+
+        .filters label {
+
+            display: block;
+
+            margin-bottom: 6px;
+
+            font-size: 14px;
+
+            font-weight: bold;
+
+        }
+
+
+        .filters select {
+
+            width: 100%;
+
+            padding: 10px;
+
+            border: 1px solid #ccc;
+
+            border-radius: 6px;
+
+            background: white;
+
+        }
+
+
+        /* =========================
+           BOUTONS
+        ========================= */
+
+        button {
+
+            padding: 10px 20px;
+
+            border: none;
+
+            border-radius: 6px;
+
+            cursor: pointer;
+
+            font-weight: bold;
+
+        }
+
+
+        .import-box button {
+
+            background: #198754;
+
+            color: white;
+
+        }
+
+
+        .filter-box button {
+
+            background: #0d6efd;
+
+            color: white;
+
+        }
+
+
+        button:hover {
+
+            opacity: 0.9;
+
+        }
+
+
+        /* Masquer le bouton Analyser puisqu'il n'est plus nécessaire */
+        .filter-box form > button {
+            display: none;
+        }
+
+        /* =========================
+           CLASSEMENT
+        ========================= */
+
+        .table-container {
+
+            background: white;
+
+            padding: 20px;
+
+            border-radius: 10px;
+
+            box-shadow:
+                0 2px 8px rgba(0, 0, 0, 0.08);
+
+        }
+
+
+        .table-container h2 {
+
+            margin-bottom: 20px;
+
+        }
+
+
+        .table-wrapper {
+
+            overflow-x: auto;
+
+        }
+
+
+        /* =========================
+           FILTRES ACTIFS + PÉRIODE
+        ========================= */
+
+        .filter-actions {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            flex-wrap: wrap;
+            margin-top: 14px;
+        }
+
+        .btn-reset {
+            display: inline-block;
+            padding: 10px 16px;
+            border-radius: 6px;
+            background: #6c757d;
+            color: white;
+            text-decoration: none;
+            font-weight: bold;
+        }
+
+        .btn-reset:hover {
+            opacity: 0.9;
+        }
+
+        .active-filters {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 8px;
+            margin: 14px 0 8px;
+        }
+
+        .active-filters-title {
+            font-size: 14px;
+            font-weight: bold;
+            color: #555;
+        }
+
+        .filter-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 7px;
+            padding: 6px 10px;
+            border-radius: 999px;
+            background: #e7f1ff;
+            color: #0b5ed7;
+            border: 1px solid #b6d4fe;
+            font-size: 13px;
+            font-weight: bold;
+        }
+
+        .period-banner {
+            margin: 0 0 25px;
+            padding: 13px 18px;
+            border-radius: 8px;
+            background: #eef5ff;
+            border-left: 4px solid #0d6efd;
+            color: #17365d;
+        }
+
+        .period-banner strong {
+            margin-right: 6px;
+        }
+
+        .search-box {
+            margin-top: 15px;
+        }
+
+        .search-box label {
+            display: block;
+            margin-bottom: 6px;
+            font-size: 14px;
+            font-weight: bold;
+        }
+
+        .search-box input {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+
+        .search-box input:focus {
+            outline: none;
+            border-color: #0d6efd;
+            box-shadow: 0 0 0 2px rgba(13, 110, 253, 0.12);
+        }
+
+        .message {
+            padding: 15px;
+            margin-bottom: 20px;
+            border-radius: 8px;
+            font-weight: bold;
+        }
+
+        .message.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        table {
+
+            width: 100%;
+
+            border-collapse: collapse;
+
+        }
+
+
+        th,
+        td {
+
+            padding: 12px;
+
+            border-bottom: 1px solid #ddd;
+
+            text-align: left;
+
+        }
+
+
+        th {
+
+            background: #f1f1f1;
+
+        }
+
+
+        tr:hover {
+
+            background: #f8f9fa;
+
+        }
+
+
+        /* =========================
+           MOYENNE
+        ========================= */
+
+        .moyenne {
+
+            font-weight: bold;
+
+        }
+
+
+        /* =========================
+           CLASSEMENT : PODIUM + PERFORMANCE
+        ========================= */
+
+        .classement-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+
+        .total-resultats {
+            display: inline-flex;
+            align-items: center;
+            padding: 7px 12px;
+            border-radius: 20px;
+            background: #eef2ff;
+            color: #334155;
+            font-size: 14px;
+            font-weight: bold;
+        }
+
+        .performance-badge {
+            display: inline-block;
+            padding: 5px 10px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: bold;
+            white-space: nowrap;
+        }
+
+        .performance-badge.excellent {
+            background: #d1fae5;
+            color: #065f46;
+        }
+
+        .performance-badge.satisfaisant {
+            background: #dbeafe;
+            color: #1e40af;
+        }
+
+        .performance-badge.a-accompagner {
+            background: #fef3c7;
+            color: #92400e;
+        }
+
+        table.classement-table tr.podium-1 {
+            background: #fff7d6;
+            box-shadow: inset 5px 0 0 #d4af37;
+        }
+
+        table.classement-table tr.podium-2 {
+            background: #f1f5f9;
+            box-shadow: inset 5px 0 0 #94a3b8;
+        }
+
+        table.classement-table tr.podium-3 {
+            background: #fff0e6;
+            box-shadow: inset 5px 0 0 #b87333;
+        }
+
+        .podium-rang {
+            font-size: 17px;
+            font-weight: bold;
+        }
+
+        .empty-state {
+            color: #666;
+            padding: 20px 0;
+            text-align: center;
+        }
+
+    </style>
+{% endblock %}
+
+
+{% block content %}
+
+<h1>🏆 Meilleurs élèves</h1>
+
+{% if messages %}
+    {% for message in messages %}
+        <div class="message {{ message.tags }}">{{ message }}</div>
+    {% endfor %}
+{% endif %}
+
+
+<div class="filter-box">
+
+    <div class="filter-box-header">
+        <h2>🔎 Filtrer les résultats</h2>
+    </div>
+
+    <form method="GET" id="filterForm">
+
+        <div class="filters">
+
+            <!-- ANNÉE -->
+            <div>
+                <label for="annee">Année scolaire</label>
+                <select name="annee" id="annee" onchange="document.getElementById('filterForm').submit();">
+                    <option value="">Toutes les années</option>
+                    {% for annee in annees %}
+                        <option value="{{ annee.id }}" {% if annee_selectionnee == annee.id|stringformat:"s" %}selected{% endif %}>
+                            {{ annee.nom }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <!-- NIVEAU -->
+            <div>
+                <label for="niveau">Niveau</label>
+                <select name="niveau" id="niveau" onchange="document.getElementById('filterForm').submit();">
+                    <option value="">Tous les niveaux</option>
+                    {% for niveau in niveaux %}
+                        <option value="{{ niveau }}" {% if niveau_selectionne == niveau %}selected{% endif %}>
+                            {{ niveau }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <!-- CLASSE -->
+            <div>
+                <label for="classe">Classe</label>
+                <select name="classe" id="classe" onchange="document.getElementById('filterForm').submit();">
+                    <option value="">Toutes les classes</option>
+                    {% for classe in classes %}
+                        <option value="{{ classe.id }}" {% if classe_selectionnee == classe.id|stringformat:"s" %}selected{% endif %}>
+                            {{ classe.nom }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <!-- TRIMESTRE -->
+            <div>
+                <label for="trimestre">Trimestre</label>
+                <select name="trimestre" id="trimestre" onchange="document.getElementById('filterForm').submit();">
+                    <option value="">Tous les trimestres</option>
+                    <option value="T1" {% if trimestre_selectionne == "T1" %}selected{% endif %}>Trimestre 1</option>
+                    <option value="T2" {% if trimestre_selectionne == "T2" %}selected{% endif %}>Trimestre 2</option>
+                    <option value="T3" {% if trimestre_selectionne == "T3" %}selected{% endif %}>Trimestre 3</option>
+                </select>
+            </div>
+
+        </div>
+
+        <div class="filter-actions">
+            <a href="{% url 'meilleurs_eleves' %}" class="btn-reset">↺ Réinitialiser les filtres</a>
+        </div>
+
+    </form>
+
+    {% if filtres_actifs %}
+        <div class="active-filters">
+            <span class="active-filters-title">Filtres actifs :</span>
+            {% for filtre in filtres_actifs %}
+                <span class="filter-badge">{{ filtre.libelle }} : {{ filtre.valeur }}</span>
+            {% endfor %}
+        </div>
+    {% endif %}
+
+</div>
+
+
+<div class="table-container">
+
+    <div class="classement-header">
+        <h2>🏆 Top 5 des meilleurs élèves</h2>
+        <span class="total-resultats">
+            📊 {{ meilleurs_eleves|length }} élève{{ meilleurs_eleves|length|pluralize }}
+        </span>
+    </div>
+
+    {% if meilleurs_eleves %}
+        <div class="table-wrapper">
+            <table class="classement-table">
+                <thead>
+                    <tr>
+                        <th>Rang</th>
+                        <th>Matricule</th>
+                        <th>Élève</th>
+                        <th>Classe</th>
+                        <th>Moyenne</th>
+                        <th>Performance</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for resultat in meilleurs_eleves %}
+                        <tr class="{% if resultat.rang == 1 %}podium-1{% elif resultat.rang == 2 %}podium-2{% elif resultat.rang == 3 %}podium-3{% endif %}">
+                            <td class="podium-rang">
+                                {% if resultat.rang == 1 %}🥇{% elif resultat.rang == 2 %}🥈{% elif resultat.rang == 3 %}🥉{% else %}{{ resultat.rang }}{% endif %}
+                            </td>
+                            <td>{{ resultat.eleve.matricule }}</td>
+                            <td>{{ resultat.eleve.nom }} {{ resultat.eleve.prenoms }}</td>
+                            <td>{{ resultat.classe.nom }}</td>
+                            <td class="moyenne">{{ resultat.moyenne_trimestrielle|default:"-" }}</td>
+                            <td>
+                                <span class="performance-badge {{ resultat.performance_css }}">
+                                    {{ resultat.performance }}
+                                </span>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% else %}
+        <div class="empty-state">
+            Aucun élève noté pour les filtres sélectionnés.
+        </div>
+    {% endif %}
+
+</div>
+
+
+{% endblock %}
