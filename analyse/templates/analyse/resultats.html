@@ -282,6 +282,47 @@
         color: #92400e;
     }
 
+    .evolution-detail {
+        display: inline-block;
+        margin-right: 8px;
+        font-size: 12px;
+        color: #475569;
+        white-space: nowrap;
+    }
+
+    .evolution-detail strong {
+        color: #1e293b;
+    }
+
+    .evolution {
+        display: inline-block;
+        padding: 4px 10px;
+        border-radius: 20px;
+        font-size: 12px;
+        font-weight: bold;
+        white-space: nowrap;
+        cursor: help;
+    }
+
+    .evolution.hausse {
+        background: #d1fae5;
+        color: #065f46;
+    }
+
+    .evolution.baisse {
+        background: #fee2e2;
+        color: #991b1b;
+    }
+
+    .evolution.stable {
+        background: #f1f5f9;
+        color: #475569;
+    }
+
+    .evolution-aucune {
+        color: #94a3b8;
+    }
+
     table.classement-table tr.podium-1 {
         background: #fff7d6;
         box-shadow: inset 5px 0 0 #d4af37;
@@ -300,6 +341,64 @@
     .podium-rang {
         font-size: 17px;
         font-weight: bold;
+    }
+
+    .btn-details {
+        background: #e9ecef;
+        border: 1px solid #ced4da;
+        border-radius: 6px;
+        padding: 5px 10px;
+        font-size: 12px;
+        font-weight: bold;
+        cursor: pointer;
+        color: #333;
+        white-space: nowrap;
+    }
+
+    .btn-details:hover {
+        background: #dee2e6;
+    }
+
+    .details-row {
+        display: none;
+    }
+
+    .details-row.open {
+        display: table-row;
+    }
+
+    .details-row td {
+        background: #f8f9fa;
+    }
+
+    .matieres-grid {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px 16px;
+        padding: 8px 4px;
+    }
+
+    .matiere-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        background: white;
+        border: 1px solid #e1e5ea;
+        border-radius: 6px;
+        padding: 5px 10px;
+        font-size: 13px;
+    }
+
+    .matiere-pill .matiere-nom {
+        color: #555;
+    }
+
+    .matiere-pill .matiere-note {
+        font-weight: bold;
+    }
+
+    .matiere-pill .matiere-note.low-average {
+        color: #dc3545;
     }
 
     .low-average,
@@ -600,7 +699,9 @@
                     <th>Élève</th>
                     <th>Classe</th>
                     <th>Moyenne</th>
+                    <th>Évolution</th>
                     <th>Performance</th>
+                    <th>Matières</th>
                 </tr>
             </thead>
 
@@ -622,18 +723,71 @@
 
                         <td class="moyenne">{{ resultat.moyenne_trimestrielle|default:"-" }}</td>
 
+                        <td style="white-space: nowrap;">
+                            {% if resultat.trimestre == "T1" %}
+                            {% elif resultat.evolution_sens == "hausse" %}
+                                <span class="evolution-detail">{{ resultat.evolution_ref }} : <strong>{{ resultat.evolution_precedente|floatformat:2 }}</strong> → {{ resultat.trimestre }} : <strong>{{ resultat.moyenne_trimestrielle|floatformat:2 }}</strong></span>
+                                <span class="evolution hausse" title="En hausse par rapport à {{ resultat.evolution_ref }}">↑ +{{ resultat.evolution|floatformat:2 }}</span>
+                            {% elif resultat.evolution_sens == "baisse" %}
+                                <span class="evolution-detail">{{ resultat.evolution_ref }} : <strong>{{ resultat.evolution_precedente|floatformat:2 }}</strong> → {{ resultat.trimestre }} : <strong>{{ resultat.moyenne_trimestrielle|floatformat:2 }}</strong></span>
+                                <span class="evolution baisse" title="En baisse par rapport à {{ resultat.evolution_ref }}">↓ {{ resultat.evolution|floatformat:2 }}</span>
+                            {% elif resultat.evolution_sens == "stable" %}
+                                <span class="evolution-detail">{{ resultat.evolution_ref }} : <strong>{{ resultat.evolution_precedente|floatformat:2 }}</strong> → {{ resultat.trimestre }} : <strong>{{ resultat.moyenne_trimestrielle|floatformat:2 }}</strong></span>
+                                <span class="evolution stable" title="Moyenne identique à {{ resultat.evolution_ref }}">= 0,00</span>
+                            {% else %}
+                                <span class="evolution-aucune" title="Pas de trimestre précédent disponible">—</span>
+                            {% endif %}
+                        </td>
+
                         <td>
                             <span class="performance-badge {{ resultat.performance_css }}">
                                 {{ resultat.performance }}
                             </span>
                         </td>
 
+                        <td>
+                            <button
+                                type="button"
+                                class="btn-details"
+                                onclick="this.closest('tr').nextElementSibling.classList.toggle('open');"
+                            >
+                                👁️ Voir
+                            </button>
+                        </td>
+
+                    </tr>
+
+                    <tr class="details-row">
+                        <td colspan="8">
+
+                            {% if resultat.details_matieres %}
+
+                                <div class="matieres-grid">
+                                    {% for matiere in resultat.details_matieres %}
+                                        <span class="matiere-pill">
+                                            <span class="matiere-nom">{{ matiere.nom }}</span>
+                                            <span class="matiere-note {% if matiere.note < 10 %}low-average{% endif %}">
+                                                {{ matiere.note }} / 20
+                                            </span>
+                                        </span>
+                                    {% endfor %}
+                                </div>
+
+                            {% else %}
+
+                                <span style="color:#777; font-size:13px; padding: 6px 4px; display:block;">
+                                    Aucune note de matière renseignée pour cet élève.
+                                </span>
+
+                            {% endif %}
+
+                        </td>
                     </tr>
 
                 {% empty %}
 
                     <tr>
-                        <td colspan="6">Aucun résultat trouvé.</td>
+                        <td colspan="8">Aucun résultat trouvé.</td>
                     </tr>
 
                 {% endfor %}

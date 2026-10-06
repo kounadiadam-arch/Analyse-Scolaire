@@ -182,6 +182,65 @@
 
 
         /* =========================
+           BARRE DE CHARGEMENT IMPORT
+        ========================= */
+
+        .upload-progress {
+            display: none;
+            margin-top: 15px;
+        }
+
+        .upload-progress.active {
+            display: block;
+        }
+
+        .upload-progress-info {
+            display: flex;
+            justify-content: space-between;
+            font-size: 13px;
+            color: #444;
+            margin-bottom: 6px;
+        }
+
+        .upload-progress-track {
+            width: 100%;
+            height: 12px;
+            background: #e9ecef;
+            border-radius: 999px;
+            overflow: hidden;
+        }
+
+        .upload-progress-bar {
+            width: 0%;
+            height: 100%;
+            background: #198754;
+            border-radius: 999px;
+            transition: width 0.2s ease;
+        }
+
+        .upload-progress-bar.processing {
+            width: 100% !important;
+            background: linear-gradient(90deg, #198754 25%, #43b77d 50%, #198754 75%);
+            background-size: 200% 100%;
+            animation: uploadStripes 1.2s linear infinite;
+        }
+
+        .upload-progress-bar.error {
+            background: #dc3545;
+        }
+
+        @keyframes uploadStripes {
+            from { background-position: 200% 0; }
+            to   { background-position: 0 0; }
+        }
+
+        .import-box button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+
+        /* =========================
            FILTRES
         ========================= */
 
@@ -550,6 +609,47 @@
             color: #92400e;
         }
 
+        .evolution-detail {
+            display: inline-block;
+            margin-right: 8px;
+            font-size: 12px;
+            color: #475569;
+            white-space: nowrap;
+        }
+
+        .evolution-detail strong {
+            color: #1e293b;
+        }
+
+        .evolution {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: bold;
+            white-space: nowrap;
+            cursor: help;
+        }
+
+        .evolution.hausse {
+            background: #d1fae5;
+            color: #065f46;
+        }
+
+        .evolution.baisse {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+
+        .evolution.stable {
+            background: #f1f5f9;
+            color: #475569;
+        }
+
+        .evolution-aucune {
+            color: #94a3b8;
+        }
+
         table.classement-table tr.podium-1 {
             background: #fff7d6;
             box-shadow: inset 5px 0 0 #d4af37;
@@ -568,6 +668,64 @@
         .podium-rang {
             font-size: 17px;
             font-weight: bold;
+        }
+
+        .btn-details {
+            background: #e9ecef;
+            border: 1px solid #ced4da;
+            border-radius: 6px;
+            padding: 5px 10px;
+            font-size: 12px;
+            font-weight: bold;
+            cursor: pointer;
+            color: #333;
+            white-space: nowrap;
+        }
+
+        .btn-details:hover {
+            background: #dee2e6;
+        }
+
+        .details-row {
+            display: none;
+        }
+
+        .details-row.open {
+            display: table-row;
+        }
+
+        .details-row td {
+            background: #f8f9fa;
+        }
+
+        .matieres-grid {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px 16px;
+            padding: 8px 4px;
+        }
+
+        .matiere-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: white;
+            border: 1px solid #e1e5ea;
+            border-radius: 6px;
+            padding: 5px 10px;
+            font-size: 13px;
+        }
+
+        .matiere-pill .matiere-nom {
+            color: #555;
+        }
+
+        .matiere-pill .matiere-note {
+            font-weight: bold;
+        }
+
+        .matiere-pill .matiere-note.low-average {
+            color: #dc3545;
         }
 
         /* =========================
@@ -1051,6 +1209,7 @@
         <form
             method="POST"
             enctype="multipart/form-data"
+            id="importForm"
         >
 
             {% csrf_token %}
@@ -1058,11 +1217,21 @@
             {{ form.as_p }}
 
 
-            <button type="submit">
+            <button type="submit" id="importBtn">
 
                 Importer le fichier
 
             </button>
+
+            <div class="upload-progress" id="uploadProgress" aria-live="polite">
+                <div class="upload-progress-info">
+                    <span id="uploadLabel">Envoi du fichier…</span>
+                    <span id="uploadPercent">0%</span>
+                </div>
+                <div class="upload-progress-track">
+                    <div class="upload-progress-bar" id="uploadBar"></div>
+                </div>
+            </div>
 
         </form>
 
@@ -1600,7 +1769,15 @@
                     </th>
 
                     <th>
+                        Évolution
+                    </th>
+
+                    <th>
                         Performance
+                    </th>
+
+                    <th>
+                        Matières
                     </th>
 
                 </tr>
@@ -1654,6 +1831,23 @@
                         </td>
 
 
+                        <td style="white-space: nowrap;">
+                            {% if resultat.trimestre == "T1" %}
+                            {% elif resultat.evolution_sens == "hausse" %}
+                                <span class="evolution-detail">{{ resultat.evolution_ref }} : <strong>{{ resultat.evolution_precedente|floatformat:2 }}</strong> → {{ resultat.trimestre }} : <strong>{{ resultat.moyenne_trimestrielle|floatformat:2 }}</strong></span>
+                                <span class="evolution hausse" title="En hausse par rapport à {{ resultat.evolution_ref }}">↑ +{{ resultat.evolution|floatformat:2 }}</span>
+                            {% elif resultat.evolution_sens == "baisse" %}
+                                <span class="evolution-detail">{{ resultat.evolution_ref }} : <strong>{{ resultat.evolution_precedente|floatformat:2 }}</strong> → {{ resultat.trimestre }} : <strong>{{ resultat.moyenne_trimestrielle|floatformat:2 }}</strong></span>
+                                <span class="evolution baisse" title="En baisse par rapport à {{ resultat.evolution_ref }}">↓ {{ resultat.evolution|floatformat:2 }}</span>
+                            {% elif resultat.evolution_sens == "stable" %}
+                                <span class="evolution-detail">{{ resultat.evolution_ref }} : <strong>{{ resultat.evolution_precedente|floatformat:2 }}</strong> → {{ resultat.trimestre }} : <strong>{{ resultat.moyenne_trimestrielle|floatformat:2 }}</strong></span>
+                                <span class="evolution stable" title="Moyenne identique à {{ resultat.evolution_ref }}">= 0,00</span>
+                            {% else %}
+                                <span class="evolution-aucune" title="Pas de trimestre précédent disponible">—</span>
+                            {% endif %}
+                        </td>
+
+
                         <td>
 
                             <span class="performance-badge {{ resultat.performance_css }}">
@@ -1663,6 +1857,53 @@
                         </td>
 
 
+                        <td>
+
+                            <button
+                                type="button"
+                                class="btn-details"
+                                onclick="this.closest('tr').nextElementSibling.classList.toggle('open');"
+                            >
+                                👁️ Voir
+                            </button>
+
+                        </td>
+
+
+                    </tr>
+
+
+                    <tr class="details-row">
+
+                        <td colspan="8">
+
+                            {% if resultat.details_matieres %}
+
+                                <div class="matieres-grid">
+
+                                    {% for matiere in resultat.details_matieres %}
+
+                                        <span class="matiere-pill">
+                                            <span class="matiere-nom">{{ matiere.nom }}</span>
+                                            <span class="matiere-note {% if matiere.note < 10 %}low-average{% endif %}">
+                                                {{ matiere.note }} / 20
+                                            </span>
+                                        </span>
+
+                                    {% endfor %}
+
+                                </div>
+
+                            {% else %}
+
+                                <span style="color:#777; font-size:13px; padding: 6px 4px; display:block;">
+                                    Aucune note de matière renseignée pour cet élève.
+                                </span>
+
+                            {% endif %}
+
+                        </td>
+
                     </tr>
 
 
@@ -1671,7 +1912,7 @@
 
                     <tr>
 
-                        <td colspan="6">
+                        <td colspan="8">
 
                             Aucun résultat trouvé.
 
@@ -2105,6 +2346,89 @@
 
 </script>
 
+
+
+<script>
+/* Barre de chargement lors de l'import du fichier */
+(function () {
+    const form = document.getElementById('importForm');
+    if (!form) return;
+
+    const btn = document.getElementById('importBtn');
+    const box = document.getElementById('uploadProgress');
+    const bar = document.getElementById('uploadBar');
+    const label = document.getElementById('uploadLabel');
+    const percent = document.getElementById('uploadPercent');
+
+    function reset() {
+        btn.disabled = false;
+        box.classList.remove('active');
+        bar.classList.remove('processing', 'error');
+        bar.style.width = '0%';
+        percent.textContent = '0%';
+    }
+
+    function showError(msg) {
+        bar.classList.remove('processing');
+        bar.classList.add('error');
+        bar.style.width = '100%';
+        label.textContent = msg;
+        percent.textContent = '';
+        btn.disabled = false;
+    }
+
+    form.addEventListener('submit', function (e) {
+        const fileInput = form.querySelector('input[type="file"]');
+        if (!fileInput || !fileInput.files.length) return; // laisse la validation normale
+
+        e.preventDefault();
+
+        const xhr = new XMLHttpRequest();
+        xhr.open('POST', form.action || window.location.href);
+
+        btn.disabled = true;
+        reset();
+        btn.disabled = true;
+        box.classList.add('active');
+        label.textContent = 'Envoi du fichier…';
+
+        xhr.upload.addEventListener('progress', function (ev) {
+            if (!ev.lengthComputable) return;
+            const p = Math.round((ev.loaded / ev.total) * 100);
+            bar.style.width = p + '%';
+            percent.textContent = p + '%';
+        });
+
+        // Envoi terminé : le serveur analyse et enregistre les données
+        xhr.upload.addEventListener('load', function () {
+            bar.classList.add('processing');
+            label.textContent = 'Traitement des données en cours…';
+            percent.textContent = '';
+        });
+
+        xhr.addEventListener('load', function () {
+            if (xhr.status >= 200 && xhr.status < 400) {
+                const target = xhr.responseURL || window.location.href;
+                if (target !== window.location.href) {
+                    window.location.href = target;   // redirection après import
+                } else {
+                    document.open();
+                    document.write(xhr.responseText); // page réaffichée avec les résultats
+                    document.close();
+                }
+            } else {
+                showError("Erreur lors de l'import (code " + xhr.status + ').');
+            }
+        });
+
+        xhr.addEventListener('error', function () {
+            showError('Erreur réseau pendant l\'import.');
+        });
+
+        xhr.send(new FormData(form));
+    });
+})();
+</script>
 
 
 {% endblock %}

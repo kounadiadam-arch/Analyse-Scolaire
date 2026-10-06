@@ -749,6 +749,8 @@ def dashboard(request):
             resultat.performance = "À accompagner"
             resultat.performance_css = "a-accompagner"
 
+        _attacher_details_matieres(resultat)
+
     total_resultats = len(classement_liste)
 
     # -----------------------------
@@ -765,6 +767,9 @@ def dashboard(request):
     classement = paginator_classement.get_page(
         numero_page_classement
     )
+
+    # Évolution par rapport au trimestre précédent (page affichée seulement)
+    _attacher_evolution(classement)
 
     # Chaîne de requête (filtres actuels) sans le paramètre de page,
     # pour reconstruire les liens de pagination dans le template.
@@ -1166,6 +1171,8 @@ def meilleurs_eleves(request):
             resultat.performance = "À accompagner"
             resultat.performance_css = "a-accompagner"
 
+        _attacher_details_matieres(resultat)
+
     # -----------------------------
     # LIBELLÉS DES FILTRES ACTIFS + PÉRIODE
     # -----------------------------
@@ -1383,6 +1390,19 @@ def _preparer_filtres_page(request):
     return resultats, contexte
 
 
+def _attacher_details_matieres(resultat):
+    """Ajoute `details_matieres` à un résultat : la liste des matières
+    (parmi celles définies dans MATIERES) où l'élève a une note
+    renseignée, avec son nom et sa note. Utilisé pour l'affichage
+    dépliable « Voir les matières » du classement."""
+
+    resultat.details_matieres = [
+        {"nom": nom, "note": getattr(resultat, champ)}
+        for nom, champ in MATIERES.items()
+        if getattr(resultat, champ) is not None
+    ]
+
+
 def _definir_performance(resultat):
     """Ajoute `performance` et `performance_css` à un résultat
     (mêmes seuils que le classement du dashboard)."""
@@ -1401,6 +1421,95 @@ def _definir_performance(resultat):
     else:
         resultat.performance = "À accompagner"
         resultat.performance_css = "a-accompagner"
+
+
+# =====================================================================
+# ÉVOLUTION DE LA MOYENNE PAR RAPPORT AU TRIMESTRE PRÉCÉDENT
+# =====================================================================
+#
+# Pour chaque élève affiché, on compare sa moyenne au trimestre
+# précédent :
+#   - T2 -> comparé à T1 (même année scolaire)
+#   - T3 -> comparé à T2 (même année scolaire)
+#   - T1 -> aucune comparaison (rien n'est affiché)
+#
+# La comparaison ne dépend pas des filtres du dashboard : le trimestre
+# précédent est toujours recherché directement dans la base. Une seule
+# requête SQL est exécutée pour toute la page.
+
+TRIMESTRE_PRECEDENT = {"T2": "T1", "T3": "T2"}
+
+
+def _attacher_evolution(resultats_page):
+    """Ajoute à chaque résultat :
+      - evolution            : écart de moyenne (Decimal) ou None
+      - evolution_sens       : "hausse", "baisse", "stable" ou None
+      - evolution_ref        : trimestre de comparaison (ex. "T1")
+      - evolution_precedente : moyenne du trimestre de comparaison
+    """
+
+    resultats_page = list(resultats_page)
+
+    if not resultats_page:
+        return
+
+    eleves_ids = {r.eleve_id for r in resultats_page}
+
+    moyennes = {}
+
+    lignes = Resultat.objects.filter(
+        eleve_id__in=eleves_ids
+    ).values_list(
+        "eleve_id", "annee_scolaire_id", "trimestre", "moyenne_trimestrielle"
+    )
+
+    for eleve_id, annee_id, trim, moy in lignes:
+        moyennes[(eleve_id, annee_id, trim)] = moy
+
+    for resultat in resultats_page:
+
+        resultat.evolution = None
+        resultat.evolution_sens = None
+        resultat.evolution_ref = ""
+        resultat.evolution_precedente = None
+
+        actuelle = resultat.moyenne_trimestrielle
+
+        if actuelle is None or actuelle == 0:
+            continue
+
+        trim = resultat.trimestre
+
+        if trim in TRIMESTRE_PRECEDENT:
+            cle = (
+                resultat.eleve_id,
+                resultat.annee_scolaire_id,
+                TRIMESTRE_PRECEDENT[trim],
+            )
+            reference = TRIMESTRE_PRECEDENT[trim]
+
+        else:
+            continue
+
+        precedente = moyennes.get(cle)
+
+        if precedente is None or precedente == 0:
+            continue
+
+        ecart = (
+            Decimal(str(actuelle)) - Decimal(str(precedente))
+        ).quantize(Decimal("0.01"))
+
+        resultat.evolution = ecart
+        resultat.evolution_ref = reference
+        resultat.evolution_precedente = precedente
+
+        if ecart > 0:
+            resultat.evolution_sens = "hausse"
+        elif ecart < 0:
+            resultat.evolution_sens = "baisse"
+        else:
+            resultat.evolution_sens = "stable"
 
 
 # =====================================================================
@@ -1441,9 +1550,13 @@ def resultats_eleves(request):
     for rang, resultat in enumerate(classement_liste, start=1):
         resultat.rang = rang
         _definir_performance(resultat)
+        _attacher_details_matieres(resultat)
 
     paginator = Paginator(classement_liste, 15)
     classement = paginator.get_page(request.GET.get("page"))
+
+    # Évolution par rapport au trimestre précédent (page affichée seulement)
+    _attacher_evolution(classement)
 
     contexte.update({
         "classement": classement,
@@ -1477,6 +1590,7 @@ def eleves_a_suivre(request):
 
     for rang, resultat in enumerate(eleves_sous_10, start=1):
         resultat.rang = rang
+        _attacher_details_matieres(resultat)
 
     paginator = Paginator(eleves_sous_10, 15)
     liste_eleves = paginator.get_page(request.GET.get("page"))

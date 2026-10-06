@@ -314,6 +314,64 @@
         padding: 10px 0;
     }
 
+    .btn-details {
+        background: #e9ecef;
+        border: 1px solid #ced4da;
+        border-radius: 6px;
+        padding: 5px 10px;
+        font-size: 12px;
+        font-weight: bold;
+        cursor: pointer;
+        color: #333;
+        white-space: nowrap;
+    }
+
+    .btn-details:hover {
+        background: #dee2e6;
+    }
+
+    .details-row {
+        display: none;
+    }
+
+    .details-row.open {
+        display: table-row;
+    }
+
+    .details-row td {
+        background: #f8f9fa;
+    }
+
+    .matieres-grid {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px 16px;
+        padding: 8px 4px;
+    }
+
+    .matiere-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        background: white;
+        border: 1px solid #e1e5ea;
+        border-radius: 6px;
+        padding: 5px 10px;
+        font-size: 13px;
+    }
+
+    .matiere-pill .matiere-nom {
+        color: #555;
+    }
+
+    .matiere-pill .matiere-note {
+        font-weight: bold;
+    }
+
+    .matiere-pill .matiere-note.low-average {
+        color: #dc3545;
+    }
+
     /* ---------- Cartes du suivi ---------- */
 
     .accompagnement-grid {
@@ -680,6 +738,7 @@
                         <th>Classe</th>
                         <th>Niveau</th>
                         <th>Moyenne</th>
+                        <th>Matières</th>
                     </tr>
                 </thead>
 
@@ -695,6 +754,42 @@
                             <td>{{ resultat.classe.niveau|default:"-" }}</td>
                             <td class="low-average">
                                 {{ resultat.moyenne_trimestrielle|default:"-" }} / 20
+                            </td>
+                            <td>
+                                <button
+                                    type="button"
+                                    class="btn-details"
+                                    onclick="this.closest('tr').nextElementSibling.classList.toggle('open');"
+                                >
+                                    👁️ Voir
+                                </button>
+                            </td>
+                        </tr>
+
+                        <tr class="details-row">
+                            <td colspan="7">
+
+                                {% if resultat.details_matieres %}
+
+                                    <div class="matieres-grid">
+                                        {% for matiere in resultat.details_matieres %}
+                                            <span class="matiere-pill">
+                                                <span class="matiere-nom">{{ matiere.nom }}</span>
+                                                <span class="matiere-note {% if matiere.note < 10 %}low-average{% endif %}">
+                                                    {{ matiere.note }} / 20
+                                                </span>
+                                            </span>
+                                        {% endfor %}
+                                    </div>
+
+                                {% else %}
+
+                                    <span style="color:#777; font-size:13px; padding: 6px 4px; display:block;">
+                                        Aucune note de matière renseignée pour cet élève.
+                                    </span>
+
+                                {% endif %}
+
                             </td>
                         </tr>
 
