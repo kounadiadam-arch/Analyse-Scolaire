@@ -4,13 +4,41 @@
 <head>
 
     <meta charset="UTF-8">
-
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="color-scheme" content="light">
 
     <title>{% block title %}Analyse scolaire{% endblock %}</title>
 
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 
     <style>
+
+        /* =========================
+           VARIABLES (design tokens)
+        ========================= */
+
+        :root {
+            --bg: #f5f6f8;
+            --surface: #ffffff;
+            --border: #e4e7ec;
+            --border-strong: #d0d5dd;
+
+            --text: #1d2433;
+            --text-muted: #667085;
+
+            --accent: #2f5bea;
+            --accent-hover: #2449c7;
+            --accent-soft: #eaf0ff;
+
+            --radius: 10px;
+            --shadow-sm: 0 1px 2px rgba(16, 24, 40, 0.05);
+            --shadow-md: 0 4px 16px rgba(16, 24, 40, 0.08);
+
+            --sidebar-width: 256px;
+            --font: "Manrope", system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+        }
 
         * {
             box-sizing: border-box;
@@ -21,19 +49,46 @@
             padding: 0;
         }
 
+        html {
+            -webkit-text-size-adjust: 100%;
+        }
+
         body {
-            font-family: Arial, sans-serif;
-            background: #f4f6f9;
-            color: #222;
+            font-family: var(--font);
+            font-size: 15px;
+            line-height: 1.55;
+            background: var(--bg);
+            color: var(--text);
+            -webkit-font-smoothing: antialiased;
+        }
+
+        h1, h2, h3 {
+            color: var(--text);
+            letter-spacing: -0.015em;
+            line-height: 1.25;
         }
 
         h1 {
             margin-top: 0;
-            margin-bottom: 25px;
+            margin-bottom: 24px;
+            font-size: 26px;
+            font-weight: 800;
         }
 
         h2 {
             margin-top: 0;
+            font-size: 19px;
+            font-weight: 700;
+        }
+
+        a {
+            color: var(--accent);
+        }
+
+        :focus-visible {
+            outline: 2px solid var(--accent);
+            outline-offset: 2px;
+            border-radius: 6px;
         }
 
 
@@ -53,70 +108,122 @@
         ========================= */
 
         .sidebar {
-            width: 240px;
+            width: var(--sidebar-width);
             flex-shrink: 0;
-            background: #1f2937;
-            color: #e5e7eb;
-            padding: 0 0 20px 0;
+            background: var(--surface);
+            border-right: 1px solid var(--border);
             position: sticky;
             top: 0;
             height: 100vh;
             overflow-y: auto;
+            display: flex;
+            flex-direction: column;
         }
 
         .sidebar-header {
-            padding: 22px 24px;
-            border-bottom: 1px solid #374151;
-            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 22px 20px 20px;
+        }
+
+        .brand-mark {
+            width: 38px;
+            height: 38px;
+            flex-shrink: 0;
+            display: grid;
+            place-items: center;
+            border-radius: 10px;
+            background: var(--accent);
+            color: #fff;
+        }
+
+        .brand-mark svg {
+            width: 20px;
+            height: 20px;
         }
 
         .sidebar-header .sidebar-title {
-            font-size: 17px;
-            font-weight: bold;
-            color: #fff;
-            line-height: 1.3;
+            font-size: 16px;
+            font-weight: 800;
+            color: var(--text);
+            line-height: 1.25;
+            letter-spacing: -0.01em;
         }
 
         .sidebar-header .sidebar-subtitle {
-            font-size: 12px;
-            color: #9ca3af;
-            margin-top: 4px;
+            font-size: 12.5px;
+            color: var(--text-muted);
+            margin-top: 1px;
+        }
+
+        .sidebar nav {
+            padding: 6px 12px 20px;
         }
 
         .sidebar nav ul {
             list-style: none;
             margin: 0;
             padding: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
         }
 
         .sidebar nav a {
             display: flex;
             align-items: center;
-            gap: 10px;
-            padding: 13px 24px;
-            color: #cbd5e1;
+            gap: 12px;
+            padding: 10px 12px;
+            color: var(--text-muted);
             text-decoration: none;
             font-weight: 600;
             font-size: 14.5px;
-            border-left: 4px solid transparent;
+            border-radius: 8px;
             transition: background 0.15s ease, color 0.15s ease;
         }
 
         .sidebar nav a:hover {
-            background: #111827;
-            color: #fff;
+            background: var(--bg);
+            color: var(--text);
         }
 
         .sidebar nav a.active {
-            background: #111827;
-            color: #fff;
-            border-left-color: #2563eb;
+            background: var(--accent-soft);
+            color: var(--accent);
         }
 
         .sidebar nav .menu-icon {
-            font-size: 16px;
+            display: grid;
+            place-items: center;
             width: 20px;
-            text-align: center;
+            height: 20px;
+            flex-shrink: 0;
+        }
+
+        .sidebar nav .menu-icon svg {
+            width: 19px;
+            height: 19px;
+            stroke: currentColor;
+            fill: none;
+            stroke-width: 1.8;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+        }
+
+        .sidebar nav .menu-separator {
+            height: 1px;
+            background: var(--border);
+            margin: 10px 4px;
+        }
+
+
+        /* =========================
+           BARRE MOBILE
+        ========================= */
+
+        .mobile-bar {
+            display: none;
         }
 
 
@@ -127,9 +234,13 @@
         .main-content {
             flex: 1;
             min-width: 0;
-            padding: 30px;
+            padding: 36px 40px 48px;
         }
 
+
+        /* =========================
+           RESPONSIVE
+        ========================= */
 
         @media (max-width: 900px) {
 
@@ -137,31 +248,110 @@
                 flex-direction: column;
             }
 
+            .mobile-bar {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                position: sticky;
+                top: 0;
+                z-index: 30;
+                padding: 10px 16px;
+                background: var(--surface);
+                border-bottom: 1px solid var(--border);
+            }
+
+            .mobile-bar .brand {
+                display: flex;
+                align-items: center;
+                gap: 10px;
+                font-weight: 800;
+                font-size: 15px;
+            }
+
+            .mobile-bar .brand-mark {
+                width: 32px;
+                height: 32px;
+                border-radius: 8px;
+            }
+
+            .mobile-bar .brand-mark svg {
+                width: 17px;
+                height: 17px;
+            }
+
+            .menu-toggle {
+                display: grid;
+                place-items: center;
+                width: 40px;
+                height: 40px;
+                border: 1px solid var(--border);
+                border-radius: 8px;
+                background: var(--surface);
+                color: var(--text);
+                cursor: pointer;
+            }
+
+            .menu-toggle svg {
+                width: 20px;
+                height: 20px;
+                stroke: currentColor;
+                fill: none;
+                stroke-width: 2;
+                stroke-linecap: round;
+            }
+
             .sidebar {
+                display: none;
                 width: 100%;
                 height: auto;
                 position: relative;
+                border-right: none;
+                border-bottom: 1px solid var(--border);
             }
 
-            .sidebar nav ul {
+            .sidebar.is-open {
                 display: flex;
-                flex-wrap: wrap;
             }
 
-            .sidebar nav a {
-                border-left: none;
-                border-bottom: 4px solid transparent;
+            .sidebar-header {
+                display: none;
             }
 
-            .sidebar nav a.active {
-                border-left-color: transparent;
-                border-bottom-color: #2563eb;
+            .sidebar nav {
+                padding-top: 12px;
             }
 
             .main-content {
-                padding: 18px;
+                padding: 22px 16px 36px;
             }
 
+            h1 {
+                font-size: 22px;
+            }
+
+        }
+
+
+        @media (prefers-reduced-motion: reduce) {
+            * {
+                transition: none !important;
+                animation: none !important;
+            }
+        }
+
+
+        @media print {
+            .sidebar, .mobile-bar {
+                display: none !important;
+            }
+
+            body {
+                background: #fff;
+            }
+
+            .main-content {
+                padding: 0;
+            }
         }
 
     </style>
@@ -178,25 +368,50 @@
 
 
     <!-- =========================
+         BARRE MOBILE
+    ========================= -->
+
+    <header class="mobile-bar">
+        <div class="brand">
+            <span class="brand-mark" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V10"/><path d="M10 20V4"/><path d="M16 20v-7"/><path d="M22 20H2"/></svg>
+            </span>
+            Analyse scolaire
+        </div>
+        <button type="button" class="menu-toggle" id="menu-toggle" aria-label="Ouvrir le menu" aria-expanded="false" aria-controls="sidebar">
+            <svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
+        </button>
+    </header>
+
+
+    <!-- =========================
          MENU LATERAL
     ========================= -->
 
-    <aside class="sidebar">
+    <aside class="sidebar" id="sidebar">
 
         <div class="sidebar-header">
-            <div class="sidebar-title">📊 Analyse scolaire</div>
-            <div class="sidebar-subtitle">Espace de gestion</div>
+            <span class="brand-mark" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V10"/><path d="M10 20V4"/><path d="M16 20v-7"/><path d="M22 20H2"/></svg>
+            </span>
+            <div>
+                <div class="sidebar-title">Analyse scolaire</div>
+                <div class="sidebar-subtitle">Espace de gestion</div>
+            </div>
         </div>
 
-        <nav>
+        <nav aria-label="Navigation principale">
             <ul>
 
                 <li>
                     <a
                         href="{% url 'dashboard' %}"
                         class="{% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}"
+                        {% if request.resolver_match.url_name == 'dashboard' %}aria-current="page"{% endif %}
                     >
-                        <span class="menu-icon">🏠</span>
+                        <span class="menu-icon" aria-hidden="true">
+                            <svg viewBox="0 0 24 24"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/><path d="M10 21v-6h4v6"/></svg>
+                        </span>
                         Accueil
                     </a>
                 </li>
@@ -205,19 +420,24 @@
                     <a
                         href="{% url 'resultats' %}"
                         class="{% if request.resolver_match.url_name == 'resultats' %}active{% endif %}"
+                        {% if request.resolver_match.url_name == 'resultats' %}aria-current="page"{% endif %}
                     >
-                        <span class="menu-icon">📋</span>
+                        <span class="menu-icon" aria-hidden="true">
+                            <svg viewBox="0 0 24 24"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8M8 12h8M8 16h5"/></svg>
+                        </span>
                         Résultats
                     </a>
                 </li>
-
 
                 <li>
                     <a
                         href="{% url 'meilleurs_eleves' %}"
                         class="{% if request.resolver_match.url_name == 'meilleurs_eleves' %}active{% endif %}"
+                        {% if request.resolver_match.url_name == 'meilleurs_eleves' %}aria-current="page"{% endif %}
                     >
-                        <span class="menu-icon">🏆</span>
+                        <span class="menu-icon" aria-hidden="true">
+                            <svg viewBox="0 0 24 24"><path d="M8 21h8M12 17v4"/><path d="M7 4h10v5a5 5 0 0 1-10 0V4Z"/><path d="M7 6H4v1a3 3 0 0 0 3 3M17 6h3v1a3 3 0 0 1-3 3"/></svg>
+                        </span>
                         Meilleurs élèves
                     </a>
                 </li>
@@ -226,9 +446,25 @@
                     <a
                         href="{% url 'eleves_a_suivre' %}"
                         class="{% if request.resolver_match.url_name == 'eleves_a_suivre' %}active{% endif %}"
+                        {% if request.resolver_match.url_name == 'eleves_a_suivre' %}aria-current="page"{% endif %}
                     >
-                        <span class="menu-icon">🎯</span>
+                        <span class="menu-icon" aria-hidden="true">
+                            <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1"/></svg>
+                        </span>
                         Élèves à suivre
+                    </a>
+                </li>
+
+                <li>
+                    <a
+                        href="{% url 'fiche_eleve' %}"
+                        class="{% if request.resolver_match.url_name == 'fiche_eleve' %}active{% endif %}"
+                        {% if request.resolver_match.url_name == 'fiche_eleve' %}aria-current="page"{% endif %}
+                    >
+                        <span class="menu-icon" aria-hidden="true">
+                            <svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>
+                        </span>
+                        Fiche élève
                     </a>
                 </li>
 
@@ -236,15 +472,22 @@
                     <a
                         href="{% url 'statistiques' %}"
                         class="{% if request.resolver_match.url_name == 'statistiques' %}active{% endif %}"
+                        {% if request.resolver_match.url_name == 'statistiques' %}aria-current="page"{% endif %}
                     >
-                        <span class="menu-icon">📈</span>
+                        <span class="menu-icon" aria-hidden="true">
+                            <svg viewBox="0 0 24 24"><path d="m3 17 6-6 4 4 8-8"/><path d="M15 7h6v6"/></svg>
+                        </span>
                         Statistiques
                     </a>
                 </li>
 
+                <li class="menu-separator" role="separator"></li>
+
                 <li>
                     <a href="{% url 'export_statistiques_excel' %}">
-                        <span class="menu-icon">🗂️</span>
+                        <span class="menu-icon" aria-hidden="true">
+                            <svg viewBox="0 0 24 24"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M4 20h16"/></svg>
+                        </span>
                         Rapports
                     </a>
                 </li>
@@ -268,6 +511,20 @@
 
 </div>
 
+
+<script>
+    (function () {
+        var toggle = document.getElementById('menu-toggle');
+        var sidebar = document.getElementById('sidebar');
+        if (!toggle || !sidebar) return;
+
+        toggle.addEventListener('click', function () {
+            var open = sidebar.classList.toggle('is-open');
+            toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+            toggle.setAttribute('aria-label', open ? 'Fermer le menu' : 'Ouvrir le menu');
+        });
+    })();
+</script>
 
 {% block extra_script %}{% endblock %}
 

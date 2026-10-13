@@ -6,8 +6,9 @@ from decimal import Decimal
 
 from django.contrib import messages
 from django.core.paginator import Paginator
-from django.http import HttpResponse
-from django.shortcuts import render
+from django.http import Http404, HttpResponse
+from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
 
 from openpyxl import Workbook
 from openpyxl.styles import Alignment, Border, Font, Side
@@ -2284,5 +2285,1046 @@ def exporter_statistiques_excel(request):
         )
     )
     reponse["Content-Disposition"] = f'attachment; filename="{nom_fichier}"'
+
+    return reponse
+
+
+
+# =====================================================================
+# PAGE "FICHE ÉLÈVE" : SUIVI INDIVIDUEL
+# =====================================================================
+#
+# L'utilisateur recherche un élève (nom, prénoms ou matricule). La page
+# affiche ensuite, pour une année scolaire choisie :
+#   - les moyennes trimestrielles et leur évolution (hausse / baisse) ;
+#   - les notes de chaque matière, trimestre par trimestre, avec
+#     l'évolution d'un trimestre au suivant ;
+#   - les matières où l'élève doit faire plus d'efforts ;
+#   - son profil : scientifique, littéraire ou équilibré.
+#
+# Réglages (à ajuster selon les usages de l'établissement) :
+
+ORDRE_TRIMESTRES = ["T1", "T2", "T3"]
+
+# Baisse d'une matière (en points) à partir de laquelle on la signale.
+SEUIL_BAISSE_NOTABLE = Decimal("1")
+
+# Écart minimal (en points) entre les deux profils pour conclure qu'un
+# élève est plutôt scientifique ou plutôt littéraire.
+SEUIL_ECART_PROFIL = Decimal("1")
+
+# Noms exacts des matières, tels que définis dans MATIERES.
+# Conduite, EPS et EDHC ne sont classées dans aucun des deux profils.
+MATIERES_SCIENTIFIQUES = ["Mathématiques", "Physiques-Chimie", "SVT"]
+
+MATIERES_LITTERAIRES = [
+    "Composition française",
+    "Orthographe / Grammaire",
+    "Expression orale",
+    "Français",
+    "Histoire-Géographie",
+    "Anglais",
+    "Espagnol",
+    "Allemand",
+    "Philosophie",
+]
+
+
+def _decimal(valeur):
+    return Decimal(str(valeur))
+
+
+def _evolution(actuelle, precedente):
+    """Écart entre deux valeurs. Renvoie (ecart, sens) où sens vaut
+    "hausse", "baisse" ou "stable", ou (None, None) si l'une des deux
+    valeurs manque."""
+
+    if actuelle is None or precedente is None:
+        return None, None
+
+    ecart = (_decimal(actuelle) - _decimal(precedente)).quantize(
+        Decimal("0.01")
+    )
+
+    if ecart > 0:
+        return ecart, "hausse"
+    if ecart < 0:
+        return ecart, "baisse"
+    return ecart, "stable"
+
+
+def _moyenne_classee(resultat):
+    """Moyenne trimestrielle d'un résultat, ou None si l'élève n'est
+    pas classé (moyenne absente ou égale à 0)."""
+
+    if resultat is None:
+        return None
+
+    moyenne = resultat.moyenne_trimestrielle
+
+    if moyenne is None or moyenne == 0:
+        return None
+
+    return _decimal(moyenne)
+
+
+def _recherche_eleves(recherche):
+    """Cherche des élèves : chaque mot saisi doit apparaître dans le
+    nom, les prénoms ou le matricule."""
+
+    filtre = Q()
+
+    for mot in recherche.split():
+        filtre &= (
+            Q(nom__icontains=mot)
+            | Q(prenoms__icontains=mot)
+            | Q(matricule__icontains=mot)
+        )
+
+    return list(Eleve.objects.filter(filtre).order_by("nom", "prenoms")[:30])
+
+
+def _ajouter_derniere_classe(eleves):
+    """Associe à chaque élève sa classe la plus récente (une seule
+    requête), pour aider à les distinguer dans la liste."""
+
+    derniere_classe = {}
+
+    lignes = Resultat.objects.filter(
+        eleve_id__in=[e.id for e in eleves]
+    ).select_related("classe", "annee_scolaire").order_by(
+        "annee_scolaire__nom", "trimestre"
+    )
+
+    for ligne in lignes:
+        derniere_classe[ligne.eleve_id] = ligne
+
+    candidats = []
+
+    for eleve in eleves:
+        ligne = derniere_classe.get(eleve.id)
+        candidats.append({
+            "eleve": eleve,
+            "classe": ligne.classe.nom if ligne else "",
+            "annee": ligne.annee_scolaire.nom if ligne else "",
+        })
+
+    return candidats
+
+
+def _rang_entier(valeur):
+    """Rang sous forme d'entier positif, ou None s'il est absent."""
+
+    try:
+        rang = int(valeur)
+    except (TypeError, ValueError):
+        return None
+
+    return rang if rang > 0 else None
+
+
+def _effectifs_classes(par_trimestre):
+    """Nombre d'élèves de la classe à chaque trimestre, pour afficher
+    « 3e sur 45 ». Une seule requête."""
+
+    classes_ids = {r.classe_id for r in par_trimestre.values()}
+    annees_ids = {r.annee_scolaire_id for r in par_trimestre.values()}
+
+    lignes = (
+        Resultat.objects
+        .filter(classe_id__in=classes_ids, annee_scolaire_id__in=annees_ids)
+        .order_by()
+        .values("classe_id", "trimestre")
+        .annotate(total=Count("id"))
+    )
+
+    return {
+        (ligne["classe_id"], ligne["trimestre"]): ligne["total"]
+        for ligne in lignes
+    }
+
+
+def _construire_lignes_trimestres(par_trimestre, effectifs):
+    """Une ligne par trimestre : moyenne, rang, classe et évolution
+    par rapport au trimestre précédent."""
+
+    lignes = []
+    moyenne_precedente = None
+    rang_precedent = None
+
+    for trim in ORDRE_TRIMESTRES:
+
+        resultat = par_trimestre.get(trim)
+        moyenne = _moyenne_classee(resultat)
+
+        ecart, sens = _evolution(moyenne, moyenne_precedente)
+
+        rang = _rang_entier(resultat.rang) if resultat else None
+
+        # Un rang plus petit est meilleur : gagner des places, c'est
+        # passer à un rang numériquement plus bas.
+        places_gagnees = None
+        sens_rang = None
+
+        if rang is not None and rang_precedent is not None:
+            places_gagnees = rang_precedent - rang
+            if places_gagnees > 0:
+                sens_rang = "hausse"
+            elif places_gagnees < 0:
+                sens_rang = "baisse"
+            else:
+                sens_rang = "stable"
+
+        lignes.append({
+            "trimestre": trim,
+            "libelle": TRIMESTRE_LABELS.get(trim, trim),
+            "present": resultat is not None,
+            "classe": resultat.classe.nom if resultat else "",
+            "moyenne": moyenne,
+            "ecart": ecart,
+            "sens": sens,
+            "rang": rang,
+            "effectif": (
+                effectifs.get((resultat.classe_id, trim)) if resultat else None
+            ),
+            "places_gagnees": places_gagnees,
+            "sens_rang": sens_rang,
+            "reference": ORDRE_TRIMESTRES[ORDRE_TRIMESTRES.index(trim) - 1]
+            if trim != "T1" else "",
+        })
+
+        # Le trimestre suivant se compare au dernier trimestre classé.
+        moyenne_precedente = moyenne
+        rang_precedent = rang
+
+    return lignes
+
+
+def _construire_tableau_matieres(par_trimestre):
+    """Une ligne par matière, avec les notes des trois trimestres et
+    l'évolution d'un trimestre au suivant. Les matières sans aucune
+    note sont ignorées."""
+
+    lignes = []
+
+    for nom, champ in MATIERES.items():
+
+        notes = []
+
+        for trim in ORDRE_TRIMESTRES:
+            resultat = par_trimestre.get(trim)
+            note = getattr(resultat, champ) if resultat else None
+            notes.append(None if note is None else _decimal(note))
+
+        if all(note is None for note in notes):
+            continue
+
+        cellules = []
+
+        for indice, trim in enumerate(ORDRE_TRIMESTRES):
+
+            if indice == 0:
+                ecart, sens = None, None
+            else:
+                ecart, sens = _evolution(notes[indice], notes[indice - 1])
+
+            cellules.append({
+                "trimestre": trim,
+                "note": notes[indice],
+                "ecart": ecart,
+                "sens": sens,
+            })
+
+        lignes.append({
+            "nom": nom,
+            "notes": notes,
+            "cellules": cellules,
+        })
+
+    return lignes
+
+
+def _matieres_a_renforcer(lignes_matieres, dernier, precedent):
+    """Matières où l'élève doit faire plus d'efforts, d'après le
+    dernier trimestre disponible : note inférieure à 10, ou baisse
+    notable par rapport au trimestre précédent."""
+
+    indice_dernier = ORDRE_TRIMESTRES.index(dernier)
+    indice_precedent = (
+        ORDRE_TRIMESTRES.index(precedent) if precedent else None
+    )
+
+    a_renforcer = []
+
+    for ligne in lignes_matieres:
+
+        note = ligne["notes"][indice_dernier]
+
+        if note is None:
+            continue
+
+        sous_moyenne = note < SEUIL_REUSSITE
+        baisse = None
+
+        if indice_precedent is not None:
+            note_precedente = ligne["notes"][indice_precedent]
+
+            if note_precedente is not None:
+                ecart = note - note_precedente
+
+                if ecart <= -SEUIL_BAISSE_NOTABLE:
+                    baisse = abs(ecart).quantize(Decimal("0.01"))
+
+        if not sous_moyenne and baisse is None:
+            continue
+
+        a_renforcer.append({
+            "nom": ligne["nom"],
+            "note": note,
+            "sous_moyenne": sous_moyenne,
+            "baisse": baisse,
+            "reference": precedent,
+            "priorite_haute": sous_moyenne and baisse is not None,
+        })
+
+    a_renforcer.sort(key=lambda m: (not m["priorite_haute"], m["note"]))
+
+    return a_renforcer
+
+
+def _moyenne_groupe(par_trimestre, noms_matieres):
+    """Moyenne d'un groupe de matières sur l'année : on calcule d'abord
+    la moyenne annuelle de chaque matière, puis la moyenne de ces
+    moyennes (chaque matière compte pour un)."""
+
+    details = []
+
+    for nom in noms_matieres:
+
+        champ = MATIERES[nom]
+
+        notes = [
+            _decimal(getattr(resultat, champ))
+            for resultat in par_trimestre.values()
+            if getattr(resultat, champ) is not None
+        ]
+
+        if notes:
+            details.append({
+                "nom": nom,
+                "moyenne": (sum(notes) / len(notes)).quantize(
+                    Decimal("0.01")
+                ),
+            })
+
+    if not details:
+        return None, []
+
+    moyenne = (
+        sum(d["moyenne"] for d in details) / len(details)
+    ).quantize(Decimal("0.01"))
+
+    for detail in details:
+        detail["pourcentage"] = float(detail["moyenne"]) / 20 * 100
+
+    details.sort(key=lambda d: d["moyenne"], reverse=True)
+
+    return moyenne, details
+
+
+def _calculer_aptitude(par_trimestre):
+    """Profil scientifique / littéraire de l'élève sur l'année."""
+
+    moy_sci, details_sci = _moyenne_groupe(
+        par_trimestre, MATIERES_SCIENTIFIQUES
+    )
+    moy_lit, details_lit = _moyenne_groupe(
+        par_trimestre, MATIERES_LITTERAIRES
+    )
+
+    aptitude = {
+        "scientifique": {
+            "moyenne": moy_sci,
+            "pourcentage": float(moy_sci) / 20 * 100 if moy_sci else 0,
+            "details": details_sci,
+        },
+        "litteraire": {
+            "moyenne": moy_lit,
+            "pourcentage": float(moy_lit) / 20 * 100 if moy_lit else 0,
+            "details": details_lit,
+        },
+        "ecart": None,
+    }
+
+    if moy_sci is None or moy_lit is None:
+        aptitude["profil"] = "indetermine"
+        aptitude["libelle"] = "Profil non déterminé"
+        aptitude["description"] = (
+            "Il manque des moyennes dans les matières scientifiques ou "
+            "littéraires pour comparer les deux profils."
+        )
+        return aptitude
+
+    ecart = (moy_sci - moy_lit).quantize(Decimal("0.01"))
+    aptitude["ecart"] = abs(ecart)
+
+    if ecart >= SEUIL_ECART_PROFIL:
+        aptitude["profil"] = "scientifique"
+        aptitude["libelle"] = "Profil scientifique"
+        aptitude["description"] = (
+            "Les résultats sont plus solides en mathématiques, "
+            "physique-chimie et SVT que dans les matières littéraires."
+        )
+    elif ecart <= -SEUIL_ECART_PROFIL:
+        aptitude["profil"] = "litteraire"
+        aptitude["libelle"] = "Profil littéraire"
+        aptitude["description"] = (
+            "Les résultats sont plus solides en langues, français et "
+            "histoire-géographie que dans les matières scientifiques."
+        )
+    else:
+        aptitude["profil"] = "equilibre"
+        aptitude["libelle"] = "Profil équilibré"
+        aptitude["description"] = (
+            "Les résultats sont proches dans les deux domaines : "
+            "aucun ne se détache nettement."
+        )
+
+    return aptitude
+
+
+def _donnees_fiche(eleve, annee_id=""):
+    """Calcule tout le contenu de la fiche d'un élève pour une année
+    scolaire (la plus récente si annee_id est vide ou inconnu). Sert à
+    la page web comme à l'export PDF. Renvoie {"aucune_donnee": True}
+    si l'élève n'a aucun résultat."""
+
+    tous_resultats = list(
+        Resultat.objects
+        .filter(eleve=eleve)
+        .select_related("annee_scolaire", "classe")
+        .order_by("annee_scolaire__nom", "trimestre")
+    )
+
+    par_annee = {}
+
+    for resultat in tous_resultats:
+        groupe = par_annee.setdefault(
+            resultat.annee_scolaire_id,
+            {"annee": resultat.annee_scolaire, "trimestres": {}},
+        )
+        groupe["trimestres"][resultat.trimestre] = resultat
+
+    if not par_annee:
+        return {"aucune_donnee": True}
+
+    annees_eleve = [g["annee"] for g in reversed(list(par_annee.values()))]
+
+    if str(annee_id).isdigit() and int(annee_id) in par_annee:
+        annee_choisie = par_annee[int(annee_id)]["annee"]
+    else:
+        annee_choisie = annees_eleve[0]
+
+    par_trimestre = par_annee[annee_choisie.id]["trimestres"]
+
+    # ---- Moyennes trimestrielles, rang et évolution ----
+
+    lignes_trimestres = _construire_lignes_trimestres(
+        par_trimestre, _effectifs_classes(par_trimestre)
+    )
+
+    moyennes_valides = [
+        l["moyenne"] for l in lignes_trimestres if l["moyenne"] is not None
+    ]
+
+    moyenne_annuelle = (
+        (sum(moyennes_valides) / len(moyennes_valides)).quantize(
+            Decimal("0.01")
+        )
+        if moyennes_valides else None
+    )
+
+    # Dernière évolution connue, pour le résumé en haut de page.
+    derniere_evolution = next(
+        (l for l in reversed(lignes_trimestres) if l["sens"]),
+        None,
+    )
+
+    # ---- Matières ----
+
+    lignes_matieres = _construire_tableau_matieres(par_trimestre)
+
+    trimestres_disponibles = [
+        t for t in ORDRE_TRIMESTRES if t in par_trimestre
+    ]
+
+    dernier = trimestres_disponibles[-1]
+    precedent = (
+        trimestres_disponibles[-2]
+        if len(trimestres_disponibles) > 1 else ""
+    )
+
+    matieres_a_renforcer = _matieres_a_renforcer(
+        lignes_matieres, dernier, precedent
+    )
+
+    ligne_dernier_trimestre = next(
+        l for l in lignes_trimestres if l["trimestre"] == dernier
+    )
+
+    aptitude = _calculer_aptitude(par_trimestre)
+
+    # ---- Données du graphique (toutes les années de l'élève) ----
+
+    graphique_labels = []
+    graphique_valeurs = []
+
+    for groupe in par_annee.values():
+        for trim in ORDRE_TRIMESTRES:
+            if trim in groupe["trimestres"]:
+                moyenne = _moyenne_classee(groupe["trimestres"][trim])
+                graphique_labels.append(f"{groupe['annee'].nom} {trim}")
+                graphique_valeurs.append(
+                    float(moyenne) if moyenne is not None else None
+                )
+
+    return {
+        "aucune_donnee": False,
+        "annees_eleve": annees_eleve,
+        "annee_choisie": annee_choisie,
+        "lignes_trimestres": lignes_trimestres,
+        "moyenne_annuelle": moyenne_annuelle,
+        "derniere_evolution": derniere_evolution,
+        "lignes_matieres": lignes_matieres,
+        "matieres_a_renforcer": matieres_a_renforcer,
+        "dernier_trimestre": dernier,
+        "ligne_dernier_trimestre": ligne_dernier_trimestre,
+        "trimestre_reference": precedent,
+        "aptitude": aptitude,
+        "seuil_reussite": SEUIL_REUSSITE,
+        "donnees_graphique": {
+            "labels": graphique_labels,
+            "valeurs": graphique_valeurs,
+            "seuil": SEUIL_REUSSITE,
+        },
+    }
+
+
+def fiche_eleve(request):
+    """Fiche de suivi individuel : recherche d'un élève puis affichage
+    de ses moyennes, de leur évolution, de son rang, des matières à
+    renforcer et de son profil scientifique / littéraire."""
+
+    recherche = request.GET.get("recherche", "").strip()
+    eleve_id = request.GET.get("eleve", "")
+    annee_id = request.GET.get("annee", "")
+
+    eleve = None
+    candidats = []
+    recherche_sans_resultat = False
+
+    # ---- Recherche de l'élève ----
+
+    if eleve_id.isdigit():
+        eleve = Eleve.objects.filter(id=int(eleve_id)).first()
+
+    if eleve is None and recherche:
+
+        trouves = _recherche_eleves(recherche)
+
+        if len(trouves) == 1:
+            eleve = trouves[0]
+        elif trouves:
+            candidats = _ajouter_derniere_classe(trouves)
+        else:
+            recherche_sans_resultat = True
+
+    contexte = {
+        "recherche": recherche,
+        "candidats": candidats,
+        "recherche_sans_resultat": recherche_sans_resultat,
+        "eleve": eleve,
+    }
+
+    if eleve is not None:
+        contexte.update(_donnees_fiche(eleve, annee_id))
+
+    return render(request, "analyse/fiche_eleve.html", contexte)
+
+
+# ---------------------------------------------------------------------
+# Export PDF de la fiche élève
+# ---------------------------------------------------------------------
+
+def _fmt(valeur, signe=False):
+    """Nombre au format français : 12,50 (ou +1,20 avec signe=True)."""
+
+    if valeur is None:
+        return "—"
+
+    texte = f"{valeur:+.2f}" if signe else f"{valeur:.2f}"
+
+    return texte.replace(".", ",")
+
+
+def _rang_texte(rang):
+    if not rang:
+        return "—"
+
+    return "1er" if rang == 1 else f"{rang}e"
+
+
+def _generer_pdf_fiche(eleve, donnees):
+    """Construit le PDF de la fiche et renvoie ses octets. Utilise la
+    bibliothèque reportlab (pip install reportlab)."""
+
+    from xml.sax.saxutils import escape
+
+    from reportlab.graphics.shapes import Drawing, Rect, String
+    from reportlab.lib import colors
+    from reportlab.lib.pagesizes import A4
+    from reportlab.lib.styles import ParagraphStyle
+    from reportlab.lib.units import cm
+    from reportlab.platypus import (
+        KeepTogether,
+        Paragraph,
+        SimpleDocTemplate,
+        Spacer,
+        Table,
+        TableStyle,
+    )
+
+    # Largeur utile des tableaux : la page moins les marges internes du cadre.
+    FACTEUR = 16.5 / 17
+
+    ACCENT = colors.HexColor("#2f5bea")
+    VIOLET = colors.HexColor("#7a5af8")
+    GRIS = colors.HexColor("#667085")
+    FOND = colors.HexColor("#eef1f6")
+    LIGNE = colors.HexColor("#e4e7ec")
+
+    COULEURS_SENS = {
+        "hausse": "#0b6b2f",
+        "baisse": "#b42318",
+        "stable": "#475467",
+    }
+
+    base = ParagraphStyle(
+        "base", fontName="Helvetica", fontSize=9.5, leading=13,
+        textColor=colors.HexColor("#1d2433"),
+    )
+    centre = ParagraphStyle("centre", parent=base, alignment=1)
+    petit = ParagraphStyle(
+        "petit", parent=base, fontSize=8.5, leading=11, textColor=GRIS,
+    )
+    titre = ParagraphStyle(
+        "titre", parent=base, fontName="Helvetica-Bold", fontSize=19,
+        leading=23,
+    )
+    titre2 = ParagraphStyle(
+        "titre2", parent=base, fontName="Helvetica-Bold", fontSize=12,
+        leading=15, textColor=ACCENT, spaceBefore=16, spaceAfter=6,
+    )
+
+    def p(texte, style=base):
+        return Paragraph(texte, style)
+
+    def evolution(ecart, sens, unite=""):
+        """Écart coloré : +1,20 / -0,50 / = (sans flèches, absentes de
+        la police standard du PDF)."""
+
+        if not sens:
+            return ""
+
+        couleur = COULEURS_SENS[sens]
+        texte = "=" if sens == "stable" else _fmt(ecart, signe=True)
+
+        return f'<font color="{couleur}" size="8">{texte}{unite}</font>'
+
+    def evolution_rang(places, sens):
+        if not sens:
+            return ""
+
+        couleur = COULEURS_SENS[sens]
+
+        if sens == "stable":
+            texte = "même rang"
+        else:
+            mot = "place" if abs(places) == 1 else "places"
+            texte = f"{places:+d} {mot}"
+
+        return f'<font color="{couleur}" size="8">{texte}</font>'
+
+    def note_texte(note):
+        couleur = "#b42318" if note < donnees["seuil_reussite"] else "#1d2433"
+        return f'<font color="{couleur}"><b>{_fmt(note)}</b></font>'
+
+    def style_tableau(extra=None):
+        regles = [
+            ("BACKGROUND", (0, 0), (-1, 0), FOND),
+            ("LINEBELOW", (0, 0), (-1, -1), 0.5, LIGNE),
+            ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+            ("TOPPADDING", (0, 0), (-1, -1), 6),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
+            ("LEFTPADDING", (0, 0), (-1, -1), 8),
+            ("RIGHTPADDING", (0, 0), (-1, -1), 8),
+        ]
+        return TableStyle(regles + (extra or []))
+
+    def entete(texte, style=base):
+        return p(f"<b>{texte}</b>", ParagraphStyle(
+            "th", parent=style, fontSize=8.5, textColor=GRIS,
+        ))
+
+    annee = donnees["annee_choisie"]
+    dernier = donnees["ligne_dernier_trimestre"]
+    aptitude = donnees["aptitude"]
+
+    contenu = []
+
+    # ---- En-tête ----
+
+    contenu.append(p("FICHE DE SUIVI DE L'ÉLÈVE", ParagraphStyle(
+        "sur", parent=petit, fontName="Helvetica-Bold", textColor=ACCENT,
+    )))
+    contenu.append(p(
+        f"{escape(eleve.nom)} {escape(eleve.prenoms)}", titre
+    ))
+    contenu.append(Spacer(1, 4))
+    contenu.append(p(
+        f"Matricule {escape(str(eleve.matricule))} &nbsp;·&nbsp; "
+        f"Année scolaire {escape(str(annee.nom))}"
+        + (f" &nbsp;·&nbsp; Classe {escape(dernier['classe'])}"
+           if dernier["classe"] else ""),
+        petit,
+    ))
+
+    # ---- Résumé ----
+
+    evol = donnees["derniere_evolution"]
+
+    cartes = [
+        ("Moyenne de l'année", _fmt(donnees["moyenne_annuelle"]) + " / 20"
+         if donnees["moyenne_annuelle"] is not None else "—"),
+        (
+            f"Rang au {donnees['dernier_trimestre']}",
+            _rang_texte(dernier["rang"])
+            + (f" sur {dernier['effectif']}" if dernier["effectif"] else ""),
+        ),
+        (
+            "Dernière évolution",
+            f"{_fmt(evol['ecart'], signe=True)} ({evol['reference']} à {evol['trimestre']})"
+            if evol else "—",
+        ),
+        ("Profil", aptitude["libelle"].replace("Profil ", "").capitalize()),
+    ]
+
+    resume = Table(
+        [[
+            [p(f'<font color="#667085" size="8">{lib}</font>'),
+             p(f"<b>{escape(val)}</b>", ParagraphStyle(
+                 "val", parent=base, fontSize=12, leading=15))]
+            for lib, val in cartes
+        ]],
+        colWidths=[largeur * FACTEUR for largeur in [4.25 * cm]] * 4,
+    )
+    resume.setStyle(TableStyle([
+        ("BOX", (0, 0), (-1, -1), 0.5, LIGNE),
+        ("INNERGRID", (0, 0), (-1, -1), 0.5, LIGNE),
+        ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#f8f9fb")),
+        ("VALIGN", (0, 0), (-1, -1), "TOP"),
+        ("TOPPADDING", (0, 0), (-1, -1), 8),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 8),
+        ("LEFTPADDING", (0, 0), (-1, -1), 10),
+    ]))
+    contenu.append(Spacer(1, 12))
+    contenu.append(resume)
+
+    # ---- Moyennes trimestrielles ----
+
+    contenu.append(p("Moyennes trimestrielles et rang", titre2))
+
+    lignes = [[
+        entete("Trimestre"), entete("Classe"),
+        entete("Moyenne", centre), entete("Évolution", centre),
+        entete("Rang", centre), entete("Évolution du rang", centre),
+    ]]
+
+    for l in donnees["lignes_trimestres"]:
+        if l["moyenne"] is not None:
+            moyenne = note_texte(l["moyenne"])
+        elif l["present"]:
+            moyenne = '<font color="#667085">Non classé</font>'
+        else:
+            moyenne = "—"
+
+        rang = _rang_texte(l["rang"])
+        if l["rang"] and l["effectif"]:
+            rang += f' <font color="#667085" size="8">/ {l["effectif"]}</font>'
+
+        lignes.append([
+            p(escape(l["libelle"])),
+            p(escape(l["classe"]) or "—"),
+            p(moyenne, centre),
+            p(evolution(l["ecart"], l["sens"]) or "—", centre),
+            p(rang, centre),
+            p(evolution_rang(l["places_gagnees"], l["sens_rang"]) or "—",
+              centre),
+        ])
+
+    tableau = Table(
+        lignes,
+        colWidths=[largeur * FACTEUR for largeur in [3 * cm, 2.6 * cm, 2.8 * cm, 2.8 * cm, 2.8 * cm, 3 * cm]],
+    )
+    tableau.setStyle(style_tableau())
+    contenu.append(tableau)
+    contenu.append(Spacer(1, 4))
+    contenu.append(p(
+        "L'évolution compare chaque trimestre au précédent. Pour le rang, "
+        "« + » signifie que l'élève a gagné des places.", petit,
+    ))
+
+    # ---- Moyennes par matière ----
+
+    contenu.append(p("Moyennes par matière", titre2))
+
+    if donnees["lignes_matieres"]:
+
+        lignes = [[
+            entete("Matière"), entete("Trimestre 1", centre),
+            entete("Trimestre 2", centre), entete("Trimestre 3", centre),
+        ]]
+
+        for ligne in donnees["lignes_matieres"]:
+            cellules = [p(escape(ligne["nom"]))]
+
+            for c in ligne["cellules"]:
+                if c["note"] is None:
+                    cellules.append(p("—", centre))
+                    continue
+
+                texte = note_texte(c["note"])
+                if c["sens"]:
+                    texte += "<br/>" + evolution(c["ecart"], c["sens"])
+
+                cellules.append(p(texte, centre))
+
+            lignes.append(cellules)
+
+        tableau = Table(
+            lignes, repeatRows=1,
+            colWidths=[largeur * FACTEUR for largeur in [6.8 * cm, 3.4 * cm, 3.4 * cm, 3.4 * cm]],
+        )
+        tableau.setStyle(style_tableau())
+        contenu.append(tableau)
+        contenu.append(Spacer(1, 4))
+        contenu.append(p(
+            "Sous chaque moyenne : évolution par rapport au trimestre "
+            "précédent.", petit,
+        ))
+    else:
+        contenu.append(p("Aucune moyenne par matière enregistrée."))
+
+    # ---- Matières à renforcer ----
+
+    bloc = [p("Matières où faire plus d'efforts", titre2)]
+
+    if donnees["trimestre_reference"]:
+        critere = (
+            f"D'après le {donnees['dernier_trimestre']} : moyenne inférieure "
+            f"à {donnees['seuil_reussite']} ou baisse d'au moins "
+            f"{_fmt(SEUIL_BAISSE_NOTABLE).rstrip('0').rstrip(',')} point "
+            f"depuis le {donnees['trimestre_reference']}."
+        )
+    else:
+        critere = (
+            f"D'après le {donnees['dernier_trimestre']} : moyenne "
+            f"inférieure à {donnees['seuil_reussite']}."
+        )
+
+    bloc.append(p(critere, petit))
+    bloc.append(Spacer(1, 6))
+
+    if donnees["matieres_a_renforcer"]:
+
+        lignes = []
+
+        for m in donnees["matieres_a_renforcer"]:
+            raisons = []
+
+            if m["priorite_haute"]:
+                raisons.append('<font color="#b42318"><b>Priorité</b></font>')
+            if m["sous_moyenne"]:
+                raisons.append("sous la moyenne")
+            if m["baisse"]:
+                raisons.append(
+                    f"baisse de {_fmt(m['baisse'])} pt "
+                    f"depuis {m['reference']}"
+                )
+
+            lignes.append([
+                p(f"<b>{escape(m['nom'])}</b> — {_fmt(m['note'])}/20"),
+                p(" · ".join(raisons)),
+            ])
+
+        tableau = Table(lignes, colWidths=[largeur * FACTEUR for largeur in [7 * cm, 10 * cm]])
+        tableau.setStyle(TableStyle([
+            ("LINEBELOW", (0, 0), (-1, -1), 0.5, LIGNE),
+            ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+            ("TOPPADDING", (0, 0), (-1, -1), 6),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
+            ("LEFTPADDING", (0, 0), (-1, -1), 4),
+        ]))
+        bloc.append(tableau)
+    else:
+        bloc.append(p(
+            f'<font color="#0b6b2f"><b>Aucune matière en difficulté au '
+            f"{donnees['dernier_trimestre']} : toutes les moyennes sont à "
+            f"{donnees['seuil_reussite']} ou plus, sans baisse notable."
+            f"</b></font>"
+        ))
+
+    contenu.append(KeepTogether(bloc))
+
+    # ---- Profil scientifique / littéraire ----
+
+    sci = aptitude["scientifique"]
+    lit = aptitude["litteraire"]
+
+    bloc = [
+        p("Capacité scientifique ou littéraire", titre2),
+        p(f"<b>{escape(aptitude['libelle'])}</b>", ParagraphStyle(
+            "verdict", parent=base, fontSize=11, leading=14)),
+        Spacer(1, 2),
+        p(escape(aptitude["description"])
+          + (f" Écart entre les deux domaines : "
+             f"{_fmt(aptitude['ecart'])} points."
+             if aptitude["ecart"] else "")),
+        Spacer(1, 8),
+    ]
+
+    largeur_piste = 9.5 * cm
+    dessin = Drawing(17 * cm, 1.7 * cm)
+
+    for indice, (libelle, groupe, couleur) in enumerate([
+        ("Matières scientifiques", sci, ACCENT),
+        ("Matières littéraires", lit, VIOLET),
+    ]):
+        y = 0.95 * cm - indice * 0.85 * cm
+        dessin.add(String(
+            0, y + 0.08 * cm, libelle,
+            fontName="Helvetica", fontSize=9, fillColor=colors.black,
+        ))
+        dessin.add(Rect(
+            5 * cm, y, largeur_piste, 0.35 * cm,
+            fillColor=FOND, strokeColor=None,
+        ))
+        if groupe["moyenne"] is not None:
+            dessin.add(Rect(
+                5 * cm, y, largeur_piste * groupe["pourcentage"] / 100,
+                0.35 * cm, fillColor=couleur, strokeColor=None,
+            ))
+        dessin.add(String(
+            5 * cm + largeur_piste + 0.3 * cm, y + 0.08 * cm,
+            f"{_fmt(groupe['moyenne'])} / 20"
+            if groupe["moyenne"] is not None else "—",
+            fontName="Helvetica-Bold", fontSize=9, fillColor=colors.black,
+        ))
+
+    bloc.append(dessin)
+    bloc.append(Spacer(1, 6))
+
+    def liste(groupe):
+        if not groupe["details"]:
+            return p("Aucune moyenne disponible.", petit)
+
+        return p("<br/>".join(
+            f"{escape(d['nom'])} : <b>{_fmt(d['moyenne'])}</b>"
+            for d in groupe["details"]
+        ), petit)
+
+    details = Table(
+        [[liste(sci), liste(lit)]], colWidths=[largeur * FACTEUR for largeur in [8.5 * cm, 8.5 * cm]],
+    )
+    details.setStyle(TableStyle([
+        ("VALIGN", (0, 0), (-1, -1), "TOP"),
+        ("LEFTPADDING", (0, 0), (-1, -1), 0),
+    ]))
+    bloc.append(details)
+    bloc.append(Spacer(1, 6))
+    bloc.append(p(
+        "Moyennes calculées sur les trimestres de l'année affichée. "
+        "Conduite, EPS et EDHC ne sont pas comptées. Ce profil est un "
+        "repère, à croiser avec l'avis des enseignants.", petit,
+    ))
+
+    contenu.append(KeepTogether(bloc))
+
+    # ---- Assemblage ----
+
+    def pied_de_page(canvas, doc):
+        canvas.saveState()
+        canvas.setStrokeColor(LIGNE)
+        canvas.line(2 * cm, 1.6 * cm, A4[0] - 2 * cm, 1.6 * cm)
+        canvas.setFont("Helvetica", 8)
+        canvas.setFillColor(GRIS)
+        canvas.drawString(
+            2 * cm, 1.1 * cm,
+            f"Analyse scolaire — généré le {datetime.now():%d/%m/%Y}",
+        )
+        canvas.drawRightString(A4[0] - 2 * cm, 1.1 * cm, f"Page {doc.page}")
+        canvas.restoreState()
+
+    tampon = io.BytesIO()
+
+    document = SimpleDocTemplate(
+        tampon, pagesize=A4,
+        leftMargin=2 * cm, rightMargin=2 * cm,
+        topMargin=1.8 * cm, bottomMargin=2.2 * cm,
+        title=f"Fiche élève — {eleve.nom} {eleve.prenoms}",
+        author="Analyse scolaire",
+    )
+    document.build(
+        contenu, onFirstPage=pied_de_page, onLaterPages=pied_de_page,
+    )
+
+    return tampon.getvalue()
+
+
+def exporter_fiche_eleve_pdf(request):
+    """Télécharge la fiche d'un élève en PDF pour l'année demandée."""
+
+    eleve_id = request.GET.get("eleve", "")
+    annee_id = request.GET.get("annee", "")
+
+    if not eleve_id.isdigit():
+        raise Http404("Élève introuvable.")
+
+    eleve = get_object_or_404(Eleve, id=int(eleve_id))
+
+    donnees = _donnees_fiche(eleve, annee_id)
+
+    if donnees["aucune_donnee"]:
+        return redirect(f"{reverse('fiche_eleve')}?eleve={eleve.id}")
+
+    try:
+        pdf = _generer_pdf_fiche(eleve, donnees)
+    except ImportError:
+        return HttpResponse(
+            "La bibliothèque reportlab n'est pas installée. "
+            "Installez-la avec : pip install reportlab",
+            status=501,
+            content_type="text/plain; charset=utf-8",
+        )
+
+    nom_fichier = re.sub(
+        r"[^A-Za-z0-9_-]+", "_",
+        f"fiche_{_normaliser(eleve.nom)}_{eleve.matricule}_{donnees['annee_choisie'].nom}",
+    ).strip("_")
+
+    reponse = HttpResponse(pdf, content_type="application/pdf")
+    reponse["Content-Disposition"] = (
+        f'attachment; filename="{nom_fichier}.pdf"'
+    )
 
     return reponse

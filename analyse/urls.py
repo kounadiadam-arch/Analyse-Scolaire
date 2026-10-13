@@ -49,5 +49,11 @@ urlpatterns = [
         views.eleves_a_suivre,
         name="eleves_a_suivre"
     ),
+    path("fiche-eleve/", views.fiche_eleve,
+        name="fiche_eleve"
+    ),
+    path("fiche-eleve/pdf/", views.exporter_fiche_eleve_pdf,
+    name="export_fiche_eleve_pdf")
+    
 
 ]
