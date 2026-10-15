@@ -193,6 +193,29 @@
             color: var(--accent);
         }
 
+        .sidebar nav .nav-disabled {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 10px 12px;
+            border-radius: 8px;
+            color: #98a2b3;
+            font-weight: 600;
+            font-size: 14.5px;
+            cursor: not-allowed;
+        }
+
+        .sidebar nav .nav-hint {
+            margin-left: auto;
+            font-size: 11px;
+            font-weight: 600;
+            padding: 2px 7px;
+            border-radius: 999px;
+            background: var(--bg);
+            color: var(--text-muted);
+            white-space: nowrap;
+        }
+
         .sidebar nav .menu-icon {
             display: grid;
             place-items: center;
@@ -479,6 +502,33 @@
                         </span>
                         Statistiques
                     </a>
+                </li>
+
+                <li>
+                    {% if bilan_disponible %}
+                    <a
+                        href="{% url 'bilan_annuel' %}"
+                        class="{% if request.resolver_match.url_name == 'bilan_annuel' %}active{% endif %}"
+                        {% if request.resolver_match.url_name == 'bilan_annuel' %}aria-current="page"{% endif %}
+                    >
+                        <span class="menu-icon" aria-hidden="true">
+                            <svg viewBox="0 0 24 24"><path d="M9 11l3 3 8-8"/><path d="M20 12v7a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h9"/></svg>
+                        </span>
+                        Bilan de fin d'année
+                    </a>
+                    {% else %}
+                    <span
+                        class="nav-disabled"
+                        aria-disabled="true"
+                        title="Disponible lorsque les moyennes des 3 trimestres sont enregistrées"
+                    >
+                        <span class="menu-icon" aria-hidden="true">
+                            <svg viewBox="0 0 24 24"><path d="M9 11l3 3 8-8"/><path d="M20 12v7a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h9"/></svg>
+                        </span>
+                        Bilan de fin d'année
+                        <span class="nav-hint">après T3</span>
+                    </span>
+                    {% endif %}
                 </li>
 
                 <li class="menu-separator" role="separator"></li>

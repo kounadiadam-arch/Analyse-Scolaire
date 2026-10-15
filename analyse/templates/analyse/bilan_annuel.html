@@ -1,0 +1,756 @@
+{% extends "base.html" %}
+
+{% block title %}Bilan de fin d'année — Analyse scolaire{% endblock %}
+
+{% block extra_style %}
+<style>
+
+    .page-intro {
+        margin: -12px 0 24px;
+        color: var(--text-muted);
+        max-width: 70ch;
+    }
+
+    .panel {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        padding: 22px 24px;
+        margin-bottom: 20px;
+    }
+
+    .panel h2 {
+        margin-bottom: 4px;
+    }
+
+    .panel-note {
+        margin: 0 0 16px;
+        color: var(--text-muted);
+        font-size: 14px;
+    }
+
+    .vide {
+        color: var(--text-muted);
+    }
+
+    .btn {
+        padding: 10px 20px;
+        font: inherit;
+        font-weight: 700;
+        border: none;
+        border-radius: 8px;
+        background: var(--accent);
+        color: #fff;
+        cursor: pointer;
+        text-decoration: none;
+        display: inline-block;
+    }
+
+    .btn:hover {
+        background: var(--accent-hover);
+    }
+
+    .btn-link {
+        padding: 10px 6px;
+        font-weight: 600;
+        color: var(--text-muted);
+        text-decoration: none;
+    }
+
+    /* ---------- Règles de calcul ---------- */
+
+    .rules {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px 24px;
+        margin: 0;
+        padding: 0;
+        list-style: none;
+        font-size: 14px;
+    }
+
+    .rules strong {
+        font-weight: 700;
+    }
+
+    /* ---------- Filtres ---------- */
+
+    .filters {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 14px;
+        align-items: flex-end;
+    }
+
+    .filters label {
+        display: block;
+        font-size: 13px;
+        font-weight: 600;
+        color: var(--text-muted);
+        margin-bottom: 4px;
+    }
+
+    .filters select,
+    .filters input[type="search"] {
+        padding: 9px 12px;
+        font: inherit;
+        border: 1px solid var(--border-strong);
+        border-radius: 8px;
+        background: var(--surface);
+        color: var(--text);
+        min-width: 150px;
+    }
+
+    .filters input[type="search"] {
+        min-width: 220px;
+    }
+
+    /* ---------- Synthèse ---------- */
+
+    .summary {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+        gap: 16px;
+        margin-bottom: 20px;
+    }
+
+    .summary .panel {
+        margin: 0;
+        padding: 18px 20px;
+    }
+
+    .summary .label {
+        font-size: 13.5px;
+        font-weight: 600;
+        color: var(--text-muted);
+    }
+
+    .summary .value {
+        font-size: 30px;
+        font-weight: 800;
+        letter-spacing: -0.02em;
+        margin-top: 2px;
+    }
+
+    .summary .value small {
+        font-size: 14px;
+        font-weight: 600;
+        color: var(--text-muted);
+    }
+
+    .summary .detail {
+        font-size: 13.5px;
+        margin-top: 4px;
+        color: var(--text-muted);
+    }
+
+    .summary .is-passe .value { color: #0b6b2f; }
+    .summary .is-redouble .value { color: #b54708; }
+    .summary .is-exclu .value { color: #b42318; }
+
+    .share-bar {
+        display: flex;
+        height: 12px;
+        border-radius: 999px;
+        overflow: hidden;
+        background: #eef0f3;
+        margin: 4px 0 8px;
+    }
+
+    .share-bar span:nth-child(1) { background: #17a34a; }
+    .share-bar span:nth-child(2) { background: #f59e0b; }
+    .share-bar span:nth-child(3) { background: #dc2626; }
+
+    /* ---------- Décisions ---------- */
+
+    .decision {
+        display: inline-block;
+        padding: 3px 10px;
+        border-radius: 999px;
+        font-size: 12.5px;
+        font-weight: 700;
+        white-space: nowrap;
+    }
+
+    .decision-passe {
+        background: #e7f6ec;
+        color: #0b6b2f;
+    }
+
+    .decision-redouble {
+        background: #fef0c7;
+        color: #93370d;
+    }
+
+    .decision-exclu {
+        background: #fdecea;
+        color: #b42318;
+    }
+
+    /* ---------- Tableau ---------- */
+
+    .table-wrap {
+        overflow-x: auto;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+    }
+
+    table.data {
+        width: 100%;
+        border-collapse: separate;
+        border-spacing: 0;
+        font-size: 14px;
+    }
+
+    table.data th,
+    table.data td {
+        padding: 10px 12px;
+        text-align: left;
+        border-bottom: 1px solid var(--border);
+        white-space: nowrap;
+        background: var(--surface);
+    }
+
+    table.data thead th {
+        font-size: 12.5px;
+        font-weight: 700;
+        color: var(--text-muted);
+        background: #f1f3f6;
+    }
+
+    table.data .num {
+        text-align: center;
+    }
+
+    table.data .sticky {
+        position: sticky;
+        left: 0;
+        z-index: 1;
+        box-shadow: 1px 0 0 var(--border);
+    }
+
+    table.data thead .sticky {
+        z-index: 2;
+    }
+
+    table.data tbody tr:hover td {
+        background: #f8f9fb;
+    }
+
+    table.data .group-start {
+        border-left: 2px solid var(--border);
+    }
+
+    table.data .moyenne-annuelle {
+        font-weight: 800;
+    }
+
+    .low {
+        color: #b42318;
+        font-weight: 700;
+    }
+
+    .btn-details {
+        background: #e9ecef;
+        border: 1px solid #ced4da;
+        border-radius: 6px;
+        padding: 5px 10px;
+        font: inherit;
+        font-size: 12px;
+        font-weight: 700;
+        cursor: pointer;
+        color: #333;
+        white-space: nowrap;
+    }
+
+    .btn-details:hover {
+        background: #dee2e6;
+    }
+
+    .btn-details[aria-expanded="true"] {
+        background: var(--accent-soft);
+        border-color: var(--accent);
+        color: var(--accent);
+    }
+
+    table.data .details-row {
+        display: none;
+    }
+
+    table.data .details-row.open {
+        display: table-row;
+    }
+
+    table.data .details-row td {
+        background: var(--bg);
+        white-space: normal;
+        padding: 14px 16px;
+    }
+
+    .details-row.open .matieres-grid {
+        animation: glisser 0.22s ease-out;
+    }
+
+    @keyframes glisser {
+        from { opacity: 0; transform: translateY(-6px); }
+        to   { opacity: 1; transform: translateY(0); }
+    }
+
+    .details-title {
+        margin: 0 0 8px;
+        font-size: 12.5px;
+        font-weight: 700;
+        color: var(--text-muted);
+    }
+
+    .matieres-grid {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px 14px;
+    }
+
+    .matiere-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        padding: 5px 10px;
+        font-size: 13px;
+    }
+
+    .matiere-pill .matiere-nom {
+        color: var(--text-muted);
+    }
+
+    .matiere-pill .matiere-note {
+        font-weight: 700;
+    }
+
+    .matiere-pill .matiere-note.low {
+        color: #b42318;
+    }
+
+    .sr-only {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        overflow: hidden;
+        clip: rect(0 0 0 0);
+        white-space: nowrap;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        .details-row.open .matieres-grid { animation: none; }
+    }
+
+    .pagination {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        flex-wrap: wrap;
+        margin-top: 16px;
+        font-size: 14px;
+    }
+
+    .pagination a {
+        color: var(--accent);
+        font-weight: 600;
+        text-decoration: none;
+    }
+
+    /* ---------- Divers ---------- */
+
+    .notice {
+        padding: 14px 16px;
+        border-radius: 8px;
+        background: #fef0c7;
+        color: #93370d;
+        margin-bottom: 20px;
+        font-size: 14.5px;
+    }
+
+    details.incomplete summary {
+        cursor: pointer;
+        font-weight: 700;
+    }
+
+    details.incomplete ul {
+        margin: 12px 0 0;
+        padding-left: 20px;
+    }
+
+    .waiting {
+        text-align: center;
+        padding: 48px 24px;
+    }
+
+    .waiting h2 {
+        font-size: 20px;
+    }
+
+    .waiting p {
+        max-width: 52ch;
+        margin: 8px auto;
+        color: var(--text-muted);
+    }
+
+    .steps {
+        display: flex;
+        justify-content: center;
+        gap: 12px;
+        margin: 20px 0 0;
+        flex-wrap: wrap;
+    }
+
+    .step {
+        padding: 8px 18px;
+        border-radius: 999px;
+        font-weight: 700;
+        font-size: 14px;
+        border: 1px solid var(--border-strong);
+        color: var(--text-muted);
+    }
+
+    .step.done {
+        background: #e7f6ec;
+        border-color: #e7f6ec;
+        color: #0b6b2f;
+    }
+
+    @media print {
+        .filters, .pagination {
+            display: none;
+        }
+    }
+
+</style>
+{% endblock %}
+
+
+{% block content %}
+
+<h1>Bilan de fin d'année</h1>
+
+
+{% if indisponible %}
+
+    <p class="page-intro">
+        Moyennes annuelles et décisions de fin d'année.
+    </p>
+
+    <section class="panel waiting">
+        <h2>Le bilan n'est pas encore disponible</h2>
+        <p>
+            Il se calcule lorsque les moyennes des trois trimestres sont
+            enregistrées. Importez les résultats manquants depuis l'accueil.
+        </p>
+
+        {% if annee_en_attente %}
+            <p>
+                Année <strong>{{ annee_en_attente.annee.nom }}</strong> :
+                {% if annee_en_attente.manquants %}
+                    il manque {{ annee_en_attente.manquants|join:", " }}.
+                {% endif %}
+            </p>
+            <div class="steps" aria-label="Trimestres enregistrés">
+                {% for t in annee_en_attente.presents %}
+                    <span class="step done">{{ t }} enregistré</span>
+                {% endfor %}
+                {% for t in annee_en_attente.manquants %}
+                    <span class="step">{{ t }} manquant</span>
+                {% endfor %}
+            </div>
+        {% else %}
+            <p>Aucun résultat n'est encore enregistré.</p>
+        {% endif %}
+    </section>
+
+{% else %}
+
+    <p class="page-intro">
+        Moyennes annuelles par matière, moyenne générale annuelle et décision
+        pour chaque élève.
+    </p>
+
+    {% if annee_en_attente %}
+        <p class="notice">
+            Année {{ annee_en_attente.annee.nom }} : bilan indisponible, il manque
+            {{ annee_en_attente.manquants|join:", " }}.
+        </p>
+    {% endif %}
+
+
+    <!-- ===== Règles ===== -->
+
+    <section class="panel">
+        <h2>Règles appliquées</h2>
+        <p class="panel-note">
+            Moyenne générale annuelle = (T1 × 1 + T2 × 2 + T3 × 2) ÷ 5.
+            Moyenne annuelle d'une matière = (T1 + T2 + T3) ÷ 3.
+        </p>
+        <ul class="rules">
+            <li><span class="decision decision-passe">Passe en classe supérieure</span> moyenne ≥ {{ seuil_passage }}</li>
+            <li><span class="decision decision-redouble">Reprend la classe</span> de {{ seuil_redoublement }} à 9,99</li>
+            <li><span class="decision decision-exclu">Exclu</span> moyenne &lt; {{ seuil_redoublement }}</li>
+        </ul>
+    </section>
+
+
+    <!-- ===== Filtres ===== -->
+
+    <section class="panel">
+        <form method="get" class="filters" id="filterForm">
+
+            <div>
+                <label for="annee">Année scolaire</label>
+                <select name="annee" id="annee" onchange="this.form.submit()">
+                    {% for a in annees %}
+                        <option value="{{ a.id }}" {% if a.id == annee.id %}selected{% endif %}>{{ a.nom }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div>
+                <label for="niveau">Niveau</label>
+                <select name="niveau" id="niveau" onchange="this.form.classe.value=''; this.form.submit()">
+                    <option value="">Tous les niveaux</option>
+                    {% for n in niveaux %}
+                        <option value="{{ n }}" {% if n == niveau %}selected{% endif %}>{{ n }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div>
+                <label for="classe">Classe</label>
+                <select name="classe" id="classe" onchange="this.form.submit()">
+                    <option value="">Toutes les classes</option>
+                    {% for c in classes %}
+                        <option value="{{ c.id }}" {% if c.id|stringformat:"s" == classe_id %}selected{% endif %}>{{ c.nom }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div>
+                <label for="decision">Décision</label>
+                <select name="decision" id="decision" onchange="this.form.submit()">
+                    <option value="">Toutes</option>
+                    {% for code, libelle in decisions.items %}
+                        <option value="{{ code }}" {% if code == decision_filtre %}selected{% endif %}>{{ libelle }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div>
+                <label for="recherche">Élève</label>
+                <input type="search" name="recherche" id="recherche" value="{{ recherche }}" placeholder="Nom ou matricule" autocomplete="off">
+            </div>
+
+            <button type="submit" class="sr-only">Afficher</button>
+            <noscript><button type="submit" class="btn">Afficher</button></noscript>
+            <a href="{% url 'bilan_annuel' %}" class="btn-link">↺ Réinitialiser</a>
+
+        </form>
+    </section>
+
+
+    <!-- ===== Synthèse ===== -->
+
+    <div class="summary">
+
+        <div class="panel">
+            <div class="label">Élèves avec bilan complet</div>
+            <div class="value">{{ synthese.total }}</div>
+            <div class="detail">
+                {% if pied.moyenne_annuelle is not None %}Moyenne générale : {{ pied.moyenne_annuelle|floatformat:2 }}{% else %}—{% endif %}
+            </div>
+        </div>
+
+        <div class="panel is-passe">
+            <div class="label">Passent en classe supérieure</div>
+            <div class="value">{{ synthese.passe }} <small>{{ synthese.passe_pct|floatformat:1 }} %</small></div>
+        </div>
+
+        <div class="panel is-redouble">
+            <div class="label">Reprennent la classe</div>
+            <div class="value">{{ synthese.redouble }} <small>{{ synthese.redouble_pct|floatformat:1 }} %</small></div>
+        </div>
+
+        <div class="panel is-exclu">
+            <div class="label">Exclus</div>
+            <div class="value">{{ synthese.exclu }} <small>{{ synthese.exclu_pct|floatformat:1 }} %</small></div>
+        </div>
+
+    </div>
+
+    {% if synthese.total %}
+        <div class="share-bar" role="img"
+             aria-label="Répartition : {{ synthese.passe_pct }} % passent, {{ synthese.redouble_pct }} % reprennent la classe, {{ synthese.exclu_pct }} % exclus">
+            <span style="width: {{ synthese.passe_pct|stringformat:'f' }}%"></span>
+            <span style="width: {{ synthese.redouble_pct|stringformat:'f' }}%"></span>
+            <span style="width: {{ synthese.exclu_pct|stringformat:'f' }}%"></span>
+        </div>
+    {% endif %}
+
+
+    <!-- ===== Tableau ===== -->
+
+    <section class="panel">
+
+        <h2>Résultats de fin d'année — {{ annee.nom }}</h2>
+        <p class="panel-note">
+            {{ nombre_filtre }} élève{{ nombre_filtre|pluralize }} affiché{{ nombre_filtre|pluralize }}.
+            Cliquez sur « Voir » pour afficher les moyennes annuelles par matière.
+        </p>
+
+        {% if page.object_list %}
+        <div class="table-wrap">
+            <table class="data">
+                <thead>
+                    <tr>
+                        <th class="sticky">Élève</th>
+                        <th>Classe</th>
+                        <th class="num">T1</th>
+                        <th class="num">T2</th>
+                        <th class="num">T3</th>
+                        <th class="num group-start">Moyenne annuelle</th>
+                        <th class="num">Rang</th>
+                        <th>Décision</th>
+                        <th class="num">Matières</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for l in page.object_list %}
+                    <tr>
+                        <td class="sticky">
+                            <strong>{{ l.eleve.nom }}</strong> {{ l.eleve.prenoms }}
+                            <div class="vide" style="font-size:12px;">{{ l.eleve.matricule }}</div>
+                        </td>
+                        <td>{{ l.classe.nom }}</td>
+                        {% for m in l.moyennes %}
+                            <td class="num {% if m < seuil_passage %}low{% endif %}">{{ m|floatformat:2 }}</td>
+                        {% endfor %}
+                        <td class="num moyenne-annuelle group-start {% if l.moyenne_annuelle < seuil_passage %}low{% endif %}">{{ l.moyenne_annuelle|floatformat:2 }}</td>
+                        <td class="num">{% if l.rang == 1 %}1er{% else %}{{ l.rang }}e{% endif %} <span class="vide" style="font-size:12px;">/ {{ l.effectif }}</span></td>
+                        <td><span class="decision decision-{{ l.decision }}">{{ l.decision_libelle }}</span></td>
+                        <td class="num">
+                            <button type="button" class="btn-details" aria-expanded="false">👁️ Voir</button>
+                        </td>
+                    </tr>
+
+                    <tr class="details-row">
+                        <td colspan="9">
+                            {% if l.details_matieres %}
+                                <p class="details-title">Moyenne annuelle par matière — {{ l.eleve.nom }} {{ l.eleve.prenoms }}</p>
+                                <div class="matieres-grid">
+                                    {% for m in l.details_matieres %}
+                                        <span class="matiere-pill">
+                                            <span class="matiere-nom">{{ m.nom }}</span>
+                                            <span class="matiere-note {% if m.note < seuil_passage %}low{% endif %}">{{ m.note|floatformat:2 }} / 20</span>
+                                        </span>
+                                    {% endfor %}
+                                </div>
+                            {% else %}
+                                <span class="vide">Aucune moyenne de matière renseignée pour cet élève.</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        {% if page.paginator.num_pages > 1 %}
+        <nav class="pagination" aria-label="Pagination">
+            <span class="vide">Page {{ page.number }} sur {{ page.paginator.num_pages }}</span>
+            <span>
+                {% if page.has_previous %}
+                    <a href="?{% if querystring %}{{ querystring }}&amp;{% endif %}page={{ page.previous_page_number }}">← Précédent</a>
+                {% endif %}
+                {% if page.has_previous and page.has_next %} &nbsp;·&nbsp; {% endif %}
+                {% if page.has_next %}
+                    <a href="?{% if querystring %}{{ querystring }}&amp;{% endif %}page={{ page.next_page_number }}">Suivant →</a>
+                {% endif %}
+            </span>
+        </nav>
+        {% endif %}
+
+        {% else %}
+            <p class="vide">Aucun élève ne correspond à ces filtres.</p>
+        {% endif %}
+
+    </section>
+
+
+    <!-- ===== Élèves sans bilan ===== -->
+
+    {% if incomplets %}
+    <section class="panel">
+        <details class="incomplete">
+            <summary>{{ incomplets|length }} élève{{ incomplets|length|pluralize }} sans bilan (trimestre manquant)</summary>
+            <p class="panel-note" style="margin-top:10px;">
+                Ces élèves n'ont pas de moyenne pour tous les trimestres : aucune décision ne peut être calculée.
+            </p>
+            <ul>
+                {% for i in incomplets %}
+                    <li>
+                        <strong>{{ i.eleve.nom }}</strong> {{ i.eleve.prenoms }}
+                        ({{ i.classe.nom }}) — manque {{ i.manquants|join:", " }}
+                    </li>
+                {% endfor %}
+            </ul>
+        </details>
+    </section>
+    {% endif %}
+
+{% endif %}
+
+{% endblock %}
+
+
+{% block extra_script %}
+<script>
+    (function () {
+
+        // ---- Bouton « Voir » : déroule la ligne des matières ----
+        document.addEventListener('click', function (event) {
+            var bouton = event.target.closest('.btn-details');
+            if (!bouton) return;
+
+            var ligne = bouton.closest('tr').nextElementSibling;
+            var ouvert = ligne.classList.toggle('open');
+
+            bouton.setAttribute('aria-expanded', ouvert ? 'true' : 'false');
+            bouton.textContent = ouvert ? '🙈 Masquer' : '👁️ Voir';
+        });
+
+        // ---- Filtres automatiques ----
+        var formulaire = document.getElementById('filterForm');
+        var recherche = document.getElementById('recherche');
+        if (!formulaire || !recherche) return;
+
+        // Après le rechargement, on remet le curseur dans le champ.
+        try {
+            if (sessionStorage.getItem('bilanRecherche') === '1') {
+                sessionStorage.removeItem('bilanRecherche');
+                recherche.focus();
+                var fin = recherche.value.length;
+                recherche.setSelectionRange(fin, fin);
+            }
+        } catch (e) {}
+
+        // La recherche se lance 0,5 s après la dernière frappe.
+        var minuteur;
+        recherche.addEventListener('input', function () {
+            clearTimeout(minuteur);
+            minuteur = setTimeout(function () {
+                try { sessionStorage.setItem('bilanRecherche', '1'); } catch (e) {}
+                formulaire.submit();
+            }, 500);
+        });
+
+    })();
+</script>
+{% endblock %}

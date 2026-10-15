@@ -16,9 +16,9 @@ urlpatterns = [
     ),
     
     path(
-    "statistiques-matieres/",
-    views.statistiques_matieres,
-    name="statistiques_matieres"
+        "statistiques-matieres/",
+        views.statistiques_matieres,
+        name="statistiques_matieres"
     ),
     path(
         "export/excel/",
@@ -49,11 +49,18 @@ urlpatterns = [
         views.eleves_a_suivre,
         name="eleves_a_suivre"
     ),
-    path("fiche-eleve/", views.fiche_eleve,
+    path("fiche-eleve/", 
+        views.fiche_eleve,
         name="fiche_eleve"
     ),
-    path("fiche-eleve/pdf/", views.exporter_fiche_eleve_pdf,
-    name="export_fiche_eleve_pdf")
+    path("fiche-eleve/pdf/", 
+        views.exporter_fiche_eleve_pdf,
+        name="export_fiche_eleve_pdf"
+    ),
+    path("bilan-annuel/",
+        views.bilan_annuel, 
+        name="bilan_annuel"
+    )
     
 
 ]

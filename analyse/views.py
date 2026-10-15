@@ -2,12 +2,13 @@ import io
 import re
 import unicodedata
 from datetime import datetime
-from decimal import Decimal
+from decimal import ROUND_HALF_UP, Decimal
 
 from django.contrib import messages
 from django.core.paginator import Paginator
 from django.http import Http404, HttpResponse
-from django.shortcuts import get_object_or_404, redirect, render
+from django.shortcuts import get_object_or_404, redirect
+from django.shortcuts import render as _render_django
 from django.urls import reverse
 
 from openpyxl import Workbook
@@ -24,6 +25,18 @@ from .models import (
     Eleve,
     Resultat,
 )
+
+
+def render(request, template_name, contexte=None, *args, **kwargs):
+    """Comme django.shortcuts.render, mais ajoute à chaque page la
+    variable « bilan_disponible » : le menu « Bilan de fin d'année » de
+    base.html n'est cliquable que si les moyennes des trois trimestres
+    sont enregistrées pour au moins une année."""
+
+    contexte = dict(contexte or {})
+    contexte.setdefault("bilan_disponible", bool(_ids_annees_completes()))
+
+    return _render_django(request, template_name, contexte, *args, **kwargs)
 
 
 
@@ -3328,3 +3341,365 @@ def exporter_fiche_eleve_pdf(request):
     )
 
     return reponse
+
+
+# =====================================================================
+# BILAN DE FIN D'ANNÉE
+# =====================================================================
+#
+# Moyenne générale annuelle = (T1 x 1 + T2 x 2 + T3 x 2) / 5.
+# Moyenne annuelle d'une matière = (T1 + T2 + T3) / 3 (coefficients 1-1-1).
+# Décision de fin d'année, d'après la moyenne générale annuelle arrondie
+# à 2 décimales :
+#   - 10 ou plus          : passe en classe supérieure ;
+#   - de 8,50 à 9,99      : reprend la classe (redoublement) ;
+#   - moins de 8,50       : exclu.
+#
+# Le bilan n'est disponible que pour les années dont les moyennes des
+# trois trimestres sont enregistrées.
+
+COEFFICIENTS_TRIMESTRES = {"T1": 1, "T2": 2, "T3": 2}
+
+SEUIL_PASSAGE = Decimal("10")
+SEUIL_REDOUBLEMENT = Decimal("8.5")
+
+DECISIONS = {
+    "passe": "Passe en classe supérieure",
+    "redouble": "Reprend la classe",
+    "exclu": "Exclu",
+}
+
+
+def _ids_annees_completes():
+    """Identifiants des années scolaires dont les trois trimestres ont
+    des moyennes enregistrées (une seule requête)."""
+
+    lignes = (
+        Resultat.objects
+        .filter(trimestre__in=ORDRE_TRIMESTRES, moyenne_trimestrielle__gt=0)
+        .order_by()
+        .values("annee_scolaire_id")
+        .annotate(nb=Count("trimestre", distinct=True))
+        .filter(nb=len(ORDRE_TRIMESTRES))
+    )
+
+    return [ligne["annee_scolaire_id"] for ligne in lignes]
+
+
+def annees_bilan_disponibles():
+    """Années scolaires pour lesquelles le bilan peut être établi,
+    de la plus récente à la plus ancienne."""
+
+    ids = _ids_annees_completes()
+
+    if not ids:
+        return []
+
+    return list(AnneeScolaire.objects.filter(id__in=ids).order_by("-nom"))
+
+
+def _moyenne_ponderee(valeurs_par_trimestre):
+    """Moyenne pondérée (T1 x 1, T2 x 2, T3 x 2) arrondie à 2 décimales.
+    Si une valeur manque, elle est ignorée et les coefficients restants
+    servent de base. Renvoie None s'il n'y a aucune valeur."""
+
+    total = Decimal("0")
+    poids = 0
+
+    for trim, coefficient in COEFFICIENTS_TRIMESTRES.items():
+        valeur = valeurs_par_trimestre.get(trim)
+
+        if valeur is None:
+            continue
+
+        total += _decimal(valeur) * coefficient
+        poids += coefficient
+
+    if poids == 0:
+        return None
+
+    return (total / poids).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+
+
+def _decision_fin_annee(moyenne_annuelle):
+    if moyenne_annuelle >= SEUIL_PASSAGE:
+        return "passe"
+
+    if moyenne_annuelle >= SEUIL_REDOUBLEMENT:
+        return "redouble"
+
+    return "exclu"
+
+
+def _moyenne_simple(valeurs):
+    valeurs = [v for v in valeurs if v is not None]
+
+    if not valeurs:
+        return None
+
+    return (sum(valeurs) / len(valeurs)).quantize(
+        Decimal("0.01"), rounding=ROUND_HALF_UP
+    )
+
+
+def _construire_bilan(annee):
+    """Bilan de tous les élèves d'une année scolaire. Renvoie
+    (lignes, incomplets, noms_matieres) :
+      - lignes : élèves ayant les trois moyennes trimestrielles ;
+      - incomplets : élèves à qui il manque au moins un trimestre ;
+      - noms_matieres : matières ayant au moins une moyenne annuelle."""
+
+    resultats = (
+        Resultat.objects
+        .filter(annee_scolaire=annee, trimestre__in=ORDRE_TRIMESTRES)
+        .select_related("eleve", "classe")
+    )
+
+    par_eleve = {}
+
+    for resultat in resultats:
+        groupe = par_eleve.setdefault(
+            resultat.eleve_id,
+            {"eleve": resultat.eleve, "trimestres": {}},
+        )
+        groupe["trimestres"][resultat.trimestre] = resultat
+
+    lignes = []
+    incomplets = []
+
+    for groupe in par_eleve.values():
+
+        trimestres = groupe["trimestres"]
+
+        moyennes = {
+            trim: _moyenne_classee(trimestres.get(trim))
+            for trim in ORDRE_TRIMESTRES
+        }
+
+        # La classe retenue est celle du trimestre le plus récent.
+        dernier = next(
+            trimestres[t] for t in reversed(ORDRE_TRIMESTRES)
+            if t in trimestres
+        )
+
+        manquants = [t for t, m in moyennes.items() if m is None]
+
+        if manquants:
+            incomplets.append({
+                "eleve": groupe["eleve"],
+                "classe": dernier.classe,
+                "manquants": manquants,
+            })
+            continue
+
+        moyenne_annuelle = _moyenne_ponderee(moyennes)
+
+        matieres = {}
+
+        # Matières : moyenne simple des trois trimestres (1-1-1).
+        for nom, champ in MATIERES.items():
+            matieres[nom] = _moyenne_simple([
+                None if getattr(trimestres[trim], champ) is None
+                else _decimal(getattr(trimestres[trim], champ))
+                for trim in ORDRE_TRIMESTRES
+            ])
+
+        decision = _decision_fin_annee(moyenne_annuelle)
+
+        lignes.append({
+            "eleve": groupe["eleve"],
+            "classe": dernier.classe,
+            "moyennes": [moyennes[t] for t in ORDRE_TRIMESTRES],
+            "moyenne_annuelle": moyenne_annuelle,
+            "matieres_par_nom": matieres,
+            "decision": decision,
+            "decision_libelle": DECISIONS[decision],
+        })
+
+    # ---- Rang annuel dans la classe (ex æquo : même rang) ----
+
+    par_classe = {}
+
+    for ligne in lignes:
+        par_classe.setdefault(ligne["classe"].id, []).append(ligne)
+
+    for groupe in par_classe.values():
+        groupe.sort(key=lambda l: l["moyenne_annuelle"], reverse=True)
+
+        rang = 0
+        precedente = None
+
+        for position, ligne in enumerate(groupe, start=1):
+            if ligne["moyenne_annuelle"] != precedente:
+                rang = position
+                precedente = ligne["moyenne_annuelle"]
+
+            ligne["rang"] = rang
+            ligne["effectif"] = len(groupe)
+
+    # ---- Colonnes de matières à afficher ----
+
+    noms_matieres = [
+        nom for nom in MATIERES
+        if any(l["matieres_par_nom"][nom] is not None for l in lignes)
+    ]
+
+    for ligne in lignes:
+        ligne["matieres"] = [
+            ligne["matieres_par_nom"][nom] for nom in noms_matieres
+        ]
+
+        # Détail affiché au clic sur « Voir » : une pastille par matière.
+        ligne["details_matieres"] = [
+            {"nom": nom, "note": ligne["matieres_par_nom"][nom]}
+            for nom in noms_matieres
+            if ligne["matieres_par_nom"][nom] is not None
+        ]
+
+    lignes.sort(key=lambda l: (l["classe"].nom, -l["moyenne_annuelle"]))
+
+    return lignes, incomplets, noms_matieres
+
+
+def bilan_annuel(request):
+    """Bilan de fin d'année : moyennes annuelles par matière, moyenne
+    générale annuelle pondérée et décision de fin d'année."""
+
+    annees = annees_bilan_disponibles()
+
+    derniere_annee = AnneeScolaire.objects.order_by("-nom").first()
+
+    # ---- Bilan indisponible : il manque des trimestres ----
+
+    annee_en_attente = None
+
+    if derniere_annee and derniere_annee.id not in [a.id for a in annees]:
+        presents = set(
+            Resultat.objects
+            .filter(annee_scolaire=derniere_annee,
+                    moyenne_trimestrielle__gt=0)
+            .values_list("trimestre", flat=True)
+        )
+
+        annee_en_attente = {
+            "annee": derniere_annee,
+            "presents": [t for t in ORDRE_TRIMESTRES if t in presents],
+            "manquants": [t for t in ORDRE_TRIMESTRES if t not in presents],
+        }
+
+    if not annees:
+        return render(request, "analyse/bilan_annuel.html", {
+            "indisponible": True,
+            "annee_en_attente": annee_en_attente,
+        })
+
+    # ---- Filtres ----
+
+    annee_id = request.GET.get("annee", "")
+
+    annee = next(
+        (a for a in annees if str(a.id) == annee_id), annees[0]
+    )
+
+    niveau = request.GET.get("niveau", "")
+    classe_id = request.GET.get("classe", "")
+    decision_filtre = request.GET.get("decision", "")
+    recherche = request.GET.get("recherche", "").strip()
+
+    lignes, incomplets, noms_matieres = _construire_bilan(annee)
+
+    # ---- Niveaux disponibles (triés : 6e, 5e, ... Terminale) ----
+
+    def niveau_de(classe):
+        return classe.niveau or "Non renseigné"
+
+    niveaux = sorted(
+        {niveau_de(l["classe"]) for l in lignes + incomplets},
+        key=lambda n: _info_tri_niveau(n)[1],
+    )
+
+    if niveau in niveaux:
+        lignes = [l for l in lignes if niveau_de(l["classe"]) == niveau]
+        incomplets = [
+            i for i in incomplets if niveau_de(i["classe"]) == niveau
+        ]
+    else:
+        niveau = ""
+
+    # Les classes proposées suivent le niveau choisi.
+    classes = sorted(
+        {l["classe"].id: l["classe"] for l in lignes + incomplets}.values(),
+        key=lambda c: c.nom,
+    )
+
+    if classe_id.isdigit() and int(classe_id) in [c.id for c in classes]:
+        classe_id_int = int(classe_id)
+        lignes = [l for l in lignes if l["classe"].id == classe_id_int]
+        incomplets = [i for i in incomplets if i["classe"].id == classe_id_int]
+    else:
+        classe_id = ""
+
+    # ---- Synthèse (sur la classe choisie, avant les autres filtres) ----
+
+    total = len(lignes)
+
+    synthese = {"total": total, "incomplets": len(incomplets)}
+
+    for code in DECISIONS:
+        nombre = sum(1 for l in lignes if l["decision"] == code)
+        synthese[code] = nombre
+        synthese[f"{code}_pct"] = (
+            round(nombre / total * 100, 1) if total else 0
+        )
+
+    pied = {
+        "moyenne_annuelle": _moyenne_simple(
+            [l["moyenne_annuelle"] for l in lignes]
+        ),
+    }
+
+    # ---- Filtres d'affichage ----
+
+    if decision_filtre in DECISIONS:
+        lignes = [l for l in lignes if l["decision"] == decision_filtre]
+    else:
+        decision_filtre = ""
+
+    if recherche:
+        mots = [_normaliser(m) for m in recherche.split()]
+
+        def correspond(eleve):
+            texte = _normaliser(
+                f"{eleve.nom} {eleve.prenoms} {eleve.matricule}"
+            )
+            return all(mot in texte for mot in mots)
+
+        lignes = [l for l in lignes if correspond(l["eleve"])]
+
+    page = Paginator(lignes, 50).get_page(request.GET.get("page"))
+
+    parametres = request.GET.copy()
+    parametres.pop("page", None)
+
+    return render(request, "analyse/bilan_annuel.html", {
+        "indisponible": False,
+        "annee_en_attente": annee_en_attente,
+        "annees": annees,
+        "annee": annee,
+        "niveaux": niveaux,
+        "niveau": niveau,
+        "classes": classes,
+        "classe_id": classe_id,
+        "decision_filtre": decision_filtre,
+        "recherche": recherche,
+        "decisions": DECISIONS,
+        "page": page,
+        "nombre_filtre": len(lignes),
+        "noms_matieres": noms_matieres,
+        "synthese": synthese,
+        "pied": pied,
+        "incomplets": incomplets,
+        "querystring": parametres.urlencode(),
+        "seuil_passage": SEUIL_PASSAGE,
+        "seuil_redoublement": SEUIL_REDOUBLEMENT,
+    })
