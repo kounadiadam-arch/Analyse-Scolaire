@@ -4,1987 +4,1275 @@
 
 
 {% block extra_style %}
-    <style>
-
-        * {
-            box-sizing: border-box;
-        }
-
-
-
-        h1 {
-
-            margin-top: 0;
-
-            margin-bottom: 25px;
-
-        }
-
-
-        h2 {
-
-            margin-top: 0;
-
-        }
-
-
-        /* =========================
-           MESSAGES
-        ========================= */
-
-        .message {
-
-            padding: 15px;
-
-            margin-bottom: 20px;
-
-            border-radius: 8px;
-
-            font-weight: bold;
-
-        }
-
-
-        .message.success {
-
-            background: #d4edda;
-
-            color: #155724;
-
-            border: 1px solid #c3e6cb;
-
-        }
-
-
-        .message.error {
-
-            background: #f8d7da;
-
-            color: #721c24;
-
-            border: 1px solid #f5c6cb;
-
-        }
-
-
-        /* =========================
-           IMPORT + FILTRES
-        ========================= */
-
-        .top-section {
-
-            display: grid;
-
-            grid-template-columns: 1fr 2fr;
-
-            gap: 20px;
-
-            margin-bottom: 25px;
-
-        }
-
-
-        .import-box,
-        .filter-box {
-
-            background: white;
-
-            padding: 22px;
-
-            border-radius: 10px;
-
-            box-shadow:
-                0 2px 8px rgba(0, 0, 0, 0.08);
-
-        }
-
-
-        .import-box h2,
-        .filter-box h2 {
-
-            margin-bottom: 18px;
-
-        }
-
-
-        .filter-box-header {
-
-            display: flex;
-
-            align-items: center;
-
-            justify-content: space-between;
-
-            gap: 15px;
-
-        }
-
-
-        .filter-box-header h2 {
-
-            margin-bottom: 0;
-
-        }
-
-
-        .btn-export {
-
-            display: inline-block;
-
-            padding: 10px 18px;
-
-            border-radius: 6px;
-
-            background: #198754;
-
-            color: white;
-
-            text-decoration: none;
-
-            font-weight: bold;
-
-            white-space: nowrap;
-
-        }
-
-
-        .btn-export:hover {
-
-            opacity: 0.9;
-
-        }
-
-
-        /* =========================
-           IMPORTATION
-        ========================= */
-
-        .import-box p {
-
-            color: #666;
-
-            font-size: 14px;
-
-        }
-
-
-        .import-box input[type="file"] {
-
-            display: block;
-
-            width: 100%;
-
-            margin-top: 15px;
-
-            margin-bottom: 15px;
-
-        }
-
-
-        /* =========================
-           BARRE DE CHARGEMENT IMPORT
-        ========================= */
-
-        .upload-progress {
-            display: none;
-            margin-top: 15px;
-        }
-
-        .upload-progress.active {
-            display: block;
-        }
-
-        .upload-progress-info {
-            display: flex;
-            justify-content: space-between;
-            font-size: 13px;
-            color: #444;
-            margin-bottom: 6px;
-        }
-
-        .upload-progress-track {
-            width: 100%;
-            height: 12px;
-            background: #e9ecef;
-            border-radius: 999px;
-            overflow: hidden;
-        }
-
-        .upload-progress-bar {
-            width: 0%;
-            height: 100%;
-            background: #198754;
-            border-radius: 999px;
-            transition: width 0.2s ease;
-        }
-
-        .upload-progress-bar.processing {
-            width: 100% !important;
-            background: linear-gradient(90deg, #198754 25%, #43b77d 50%, #198754 75%);
-            background-size: 200% 100%;
-            animation: uploadStripes 1.2s linear infinite;
-        }
-
-        .upload-progress-bar.error {
-            background: #dc3545;
-        }
-
-        @keyframes uploadStripes {
-            from { background-position: 200% 0; }
-            to   { background-position: 0 0; }
-        }
-
-        .import-box button:disabled {
-            opacity: 0.6;
-            cursor: not-allowed;
-        }
-
-
-        /* =========================
-           FILTRES
-        ========================= */
-
-        .filters {
-
-            display: flex;
-
-            gap: 12px;
-
-            align-items: end;
-
-            margin-bottom: 15px;
-
-        }
-
-
-        .filters div {
-
-            flex: 1;
-
-        }
-
-
-        .filters label {
-
-            display: block;
-
-            margin-bottom: 6px;
-
-            font-size: 14px;
-
-            font-weight: bold;
-
-        }
-
-
-        .filters select {
-
-            width: 100%;
-
-            padding: 10px;
-
-            border: 1px solid #ccc;
-
-            border-radius: 6px;
-
-            background: white;
-
-        }
-
-
-        /* =========================
-           BOUTONS
-        ========================= */
-
-        button {
-
-            padding: 10px 20px;
-
-            border: none;
-
-            border-radius: 6px;
-
-            cursor: pointer;
-
-            font-weight: bold;
-
-        }
-
-
-        .import-box button {
-
-            background: #198754;
-
-            color: white;
-
-        }
-
-
-        .filter-box button {
-
-            background: #0d6efd;
-
-            color: white;
-
-        }
-
-
-        button:hover {
-
-            opacity: 0.9;
-
-        }
-
-
-        /* Masquer le bouton Analyser puisqu'il n'est plus nécessaire */
-        .filter-box form > button {
-            display: none;
-        }
-
-
-        /* =========================
-           CARTES STATISTIQUES
-        ========================= */
-
-        .cards {
-
-            display: grid;
-
-            grid-template-columns:
-                repeat(4, 1fr);
-
-            gap: 20px;
-
-            margin-bottom: 30px;
-
-        }
-
-
-        .card {
-
-            background: white;
-
-            padding: 20px;
-
-            border-radius: 10px;
-
-            text-align: center;
-
-            box-shadow:
-                0 2px 8px rgba(0, 0, 0, 0.08);
-
-        }
-
-
-        .card h2 {
-
-            margin: 0;
-
-            font-size: 30px;
-
-        }
-
-
-        .card p {
-
-            color: #666;
-
-            margin-bottom: 0;
-
-        }
-
-
-
-        /* =========================
-           BLOC ACCOMPAGNEMENT
-        ========================= */
-
-        .accompagnement-section {
-            background: white;
-            padding: 22px;
-            border-radius: 10px;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-            margin-bottom: 30px;
-        }
-
-        .accompagnement-header {
-            margin-bottom: 20px;
-        }
-
-        .accompagnement-header h2 {
-            margin-bottom: 8px;
-        }
-
-        .accompagnement-header p {
-            margin: 0;
-            color: #666;
-        }
-
-        .accompagnement-card {
-            border: 1px solid #e1e5ea;
-            border-radius: 10px;
-            padding: 18px;
-            background: #fafbfc;
-        }
-
-        .accompagnement-card h3 {
-            margin-top: 0;
-            margin-bottom: 15px;
-            font-size: 18px;
-        }
-
-        .accompagnement-card-header {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: 10px;
-            flex-wrap: wrap;
-        }
-
-        .accompagnement-card-header h3 {
-            margin-bottom: 15px;
-        }
-
-        .btn-export-sm {
-            display: inline-block;
-            padding: 6px 12px;
-            border-radius: 6px;
-            background: #198754;
-            color: white;
-            text-decoration: none;
-            font-weight: bold;
-            font-size: 13px;
-            white-space: nowrap;
-            margin-bottom: 15px;
-        }
-
-        .btn-export-sm:hover {
-            opacity: 0.9;
-        }
-
-        .accompagnement-card table {
-            background: white;
-        }
-
-        .priority-list {
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 10px;
-        }
-
-        @media (max-width: 700px) {
-            .priority-list {
-                grid-template-columns: 1fr;
-            }
-        }
-
-        .priority-item {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            padding: 11px;
-            background: white;
-            border: 1px solid #e1e5ea;
-            border-radius: 8px;
-        }
-
-        .priority-number {
-            min-width: 30px;
-            height: 30px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            border-radius: 50%;
-            background: #dc3545;
-            color: white;
-            font-weight: bold;
-        }
-
-        .priority-info {
-            flex: 1;
-        }
-
-        .priority-info strong {
-            display: block;
-        }
-
-        .priority-meta {
-            color: #666;
-            font-size: 13px;
-            margin-top: 3px;
-        }
-
-        .low-average {
-            font-weight: bold;
-            color: #dc3545;
-        }
-
-        .rate-low {
-            font-weight: bold;
-            color: #dc3545;
-        }
-
-        .empty-accompagnement {
-            color: #198754;
-            font-weight: bold;
-            padding: 10px 0;
-        }
-
-        /* =========================
-           CLASSEMENT
-        ========================= */
-
-        .table-container {
-
-            background: white;
-
-            padding: 20px;
-
-            border-radius: 10px;
-
-            box-shadow:
-                0 2px 8px rgba(0, 0, 0, 0.08);
-
-        }
-
-
-        .table-container h2 {
-
-            margin-bottom: 20px;
-
-        }
-
-
-        .table-wrapper {
-
-            overflow-x: auto;
-
-        }
-
-
-        /* =========================
-           CLASSEMENT : PODIUM + PERFORMANCE
-        ========================= */
-
-        .classement-header {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: 15px;
-            flex-wrap: wrap;
-        }
-
-        .total-resultats {
-            display: inline-flex;
-            align-items: center;
-            padding: 7px 12px;
-            border-radius: 20px;
-            background: #eef2ff;
-            color: #334155;
-            font-size: 14px;
-            font-weight: bold;
-        }
-
-        .performance-badge {
-            display: inline-block;
-            padding: 5px 10px;
-            border-radius: 20px;
-            font-size: 12px;
-            font-weight: bold;
-            white-space: nowrap;
-        }
-
-        .performance-badge.excellent {
-            background: #d1fae5;
-            color: #065f46;
-        }
-
-        .performance-badge.satisfaisant {
-            background: #dbeafe;
-            color: #1e40af;
-        }
-
-        .performance-badge.a-accompagner {
-            background: #fef3c7;
-            color: #92400e;
-        }
-
-        .evolution-detail {
-            display: inline-block;
-            margin-right: 8px;
-            font-size: 12px;
-            color: #475569;
-            white-space: nowrap;
-        }
-
-        .evolution-detail strong {
-            color: #1e293b;
-        }
-
-        .evolution {
-            display: inline-block;
-            padding: 4px 10px;
-            border-radius: 20px;
-            font-size: 12px;
-            font-weight: bold;
-            white-space: nowrap;
-            cursor: help;
-        }
-
-        .evolution.hausse {
-            background: #d1fae5;
-            color: #065f46;
-        }
-
-        .evolution.baisse {
-            background: #fee2e2;
-            color: #991b1b;
-        }
-
-        .evolution.stable {
-            background: #f1f5f9;
-            color: #475569;
-        }
-
-        .evolution-aucune {
-            color: #94a3b8;
-        }
-
-        table.classement-table tr.podium-1 {
-            background: #fff7d6;
-            box-shadow: inset 5px 0 0 #d4af37;
-        }
-
-        table.classement-table tr.podium-2 {
-            background: #f1f5f9;
-            box-shadow: inset 5px 0 0 #94a3b8;
-        }
-
-        table.classement-table tr.podium-3 {
-            background: #fff0e6;
-            box-shadow: inset 5px 0 0 #b87333;
-        }
-
-        .podium-rang {
-            font-size: 17px;
-            font-weight: bold;
-        }
-
-        .btn-details {
-            background: #e9ecef;
-            border: 1px solid #ced4da;
-            border-radius: 6px;
-            padding: 5px 10px;
-            font-size: 12px;
-            font-weight: bold;
-            cursor: pointer;
-            color: #333;
-            white-space: nowrap;
-        }
-
-        .btn-details:hover {
-            background: #dee2e6;
-        }
-
-        .details-row {
-            display: none;
-        }
-
-        .details-row.open {
-            display: table-row;
-        }
-
-        .details-row td {
-            background: #f8f9fa;
-        }
-
-        .matieres-grid {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 8px 16px;
-            padding: 8px 4px;
-        }
-
-        .matiere-pill {
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            background: white;
-            border: 1px solid #e1e5ea;
-            border-radius: 6px;
-            padding: 5px 10px;
-            font-size: 13px;
-        }
-
-        .matiere-pill .matiere-nom {
-            color: #555;
-        }
-
-        .matiere-pill .matiere-note {
-            font-weight: bold;
-        }
-
-        .matiere-pill .matiere-note.low-average {
-            color: #dc3545;
-        }
-
-        /* =========================
-           PAGINATION
-        ========================= */
-
-        .pagination {
-
-            display: flex;
-
-            align-items: center;
-
-            justify-content: center;
-
-            gap: 15px;
-
-            margin-top: 20px;
-
-        }
-
-
-        .pagination-link {
-
-            padding: 8px 16px;
-
-            border-radius: 6px;
-
-            background: #0d6efd;
-
-            color: white;
-
-            text-decoration: none;
-
-            font-weight: bold;
-
-        }
-
-
-        .pagination-link:hover {
-
-            opacity: 0.9;
-
-        }
-
-
-        .pagination-link.disabled {
-
-            background: #e9ecef;
-
-            color: #adb5bd;
-
-            cursor: not-allowed;
-
-        }
-
-
-        .pagination-info {
-
-            color: #555;
-
-            font-weight: bold;
-
-        }
-
-
-        table {
-
-            width: 100%;
-
-            border-collapse: collapse;
-
-        }
-
-
-        th,
-        td {
-
-            padding: 12px;
-
-            border-bottom: 1px solid #ddd;
-
-            text-align: left;
-
-        }
-
-
-        th {
-
-            background: #f1f1f1;
-
-        }
-
-
-        tr:hover {
-
-            background: #f8f9fa;
-
-        }
-
-
-        /* =========================
-           MOYENNE
-        ========================= */
-
-        .moyenne {
-
-            font-weight: bold;
-
-        }
-
-
-
-        /* =========================
-           GRAPHIQUES
-        ========================= */
-
-        .charts-section {
-
-            margin-bottom: 30px;
-
-        }
-
-
-        /* Trois graphiques sur une même ligne */
-        .charts-grid {
-
-            display: grid;
-
-            grid-template-columns: repeat(3, minmax(0, 1fr));
-
-            gap: 20px;
-
-        }
-
-
-        .chart-card {
-
-            background: white;
-
-            padding: 20px;
-
-            border-radius: 10px;
-
-            box-shadow:
-                0 2px 8px rgba(0, 0, 0, 0.08);
-
-            min-width: 0;
-
-        }
-
-
-        .chart-title {
-
-            margin: 0 0 4px 0;
-
-            font-size: 16px;
-
-        }
-
-
-        .chart-note {
-
-            margin: 0 0 14px 0;
-
-            color: #666;
-
-            font-size: 13px;
-
-            line-height: 1.4;
-
-            /* Réserve 2 lignes pour que les 3 graphiques restent alignés */
-            min-height: 2.8em;
-
-        }
-
-
-        .chart-box {
-
-            position: relative;
-
-            height: 300px;
-
-        }
-
-
-        .charts-empty {
-
-            background: white;
-
-            padding: 30px;
-
-            border-radius: 10px;
-
-            text-align: center;
-
-            color: #666;
-
-            box-shadow:
-                0 2px 8px rgba(0, 0, 0, 0.08);
-
-        }
-
-
-        /* En dessous de 1000 px, les graphiques passent l'un sous l'autre */
-        @media (max-width: 1000px) {
-
-            .charts-grid {
-
-                grid-template-columns: minmax(0, 1fr);
-
-            }
-
-            .chart-note {
-
-                min-height: 0;
-
-            }
-
-        }
-
-
-        @media (max-width: 600px) {
-
-            .chart-card {
-
-                padding: 15px;
-
-            }
-
-            .chart-box {
-
-                height: 260px;
-
-            }
-
-        }
-
-
-        /* =========================
-           FILTRES ACTIFS + PÉRIODE
-        ========================= */
-
-        .filter-actions {
-            display: flex;
-            gap: 10px;
-            align-items: center;
-            flex-wrap: wrap;
-            margin-top: 14px;
-        }
-
-        .btn-reset {
-            display: inline-block;
-            padding: 10px 16px;
-            border-radius: 6px;
-            background: #6c757d;
-            color: white;
-            text-decoration: none;
-            font-weight: bold;
-        }
-
-        .btn-reset:hover {
-            opacity: 0.9;
-        }
-
-        .active-filters {
-            display: flex;
-            flex-wrap: wrap;
-            align-items: center;
-            gap: 8px;
-            margin: 14px 0 8px;
-        }
-
-        .active-filters-title {
-            font-size: 14px;
-            font-weight: bold;
-            color: #555;
-        }
-
-        .filter-badge {
-            display: inline-flex;
-            align-items: center;
-            gap: 7px;
-            padding: 6px 10px;
-            border-radius: 999px;
-            background: #e7f1ff;
-            color: #0b5ed7;
-            border: 1px solid #b6d4fe;
-            font-size: 13px;
-            font-weight: bold;
-        }
-
-        .period-banner {
-            margin: 0 0 25px;
-            padding: 13px 18px;
-            border-radius: 8px;
-            background: #eef5ff;
-            border-left: 4px solid #0d6efd;
-            color: #17365d;
-        }
-
-        .period-banner strong {
-            margin-right: 6px;
-        }
-
-        .search-box {
-            margin-top: 15px;
-        }
-
-        .search-box label {
-            display: block;
-            margin-bottom: 6px;
-            font-size: 14px;
-            font-weight: bold;
-        }
-
-        .search-box input {
-            width: 100%;
-            padding: 10px 12px;
-            border: 1px solid #ccc;
-            border-radius: 6px;
-            font-size: 14px;
-        }
-
-        .search-box input:focus {
-            outline: none;
-            border-color: #0d6efd;
-            box-shadow: 0 0 0 2px rgba(13, 110, 253, 0.12);
-        }
-
-        /* =========================
-           RESPONSIVE
-        ========================= */
-
-        @media (max-width: 1100px) {
-
-            .cards {
-
-                grid-template-columns:
-                    repeat(2, 1fr);
-
-            }
-
-        }
-
-
-        @media (max-width: 900px) {
-
-            body {
-
-                padding: 20px;
-
-            }
-
-
-            .top-section {
-
-                grid-template-columns: 1fr;
-
-            }
-
-
-            .filters {
-
-                flex-direction: column;
-
-                align-items: stretch;
-
-            }
-
-
-            .filters div {
-
-                width: 100%;
-
-            }
-
-        }
-
-
-        @media (max-width: 600px) {
-
-            body {
-
-                padding: 15px;
-
-            }
-
-
-            .cards {
-
-                grid-template-columns: 1fr;
-
-            }
-
-
-            .import-box,
-            .filter-box,
-            .table-container {
-
-                padding: 15px;
-
-            }
-
-
-            .filter-box-header {
-
-                flex-direction: column;
-
-                align-items: stretch;
-
-            }
-
-
-            .btn-export {
-
-                text-align: center;
-
-            }
-
-        }
-
-    </style>
+<style>
+
+    /* =====================================================
+       Toutes les règles sont limitées à .dash : plus aucun
+       style global (button, table, th, td, h1, body…) ne
+       déborde sur le menu ou sur les autres pages.
+       Les couleurs viennent des variables de base.html.
+    ===================================================== */
+
+    .dash {
+        --d-surface: var(--surface, #fff);
+        --d-bg: var(--bg, #f5f6f8);
+        --d-border: var(--border, #e4e7ec);
+        --d-border-strong: var(--border-strong, #d0d5dd);
+        --d-text: var(--text, #1d2433);
+        --d-muted: var(--text-muted, #667085);
+        --d-accent: var(--accent, #2f5bea);
+        --d-accent-hover: var(--accent-hover, #2449c7);
+        --d-accent-soft: var(--accent-soft, #eaf0ff);
+        --d-radius: var(--radius, 10px);
+
+        --ok: #0b6b2f;      --ok-bg: #e7f6ec;
+        --warn: #93370d;    --warn-bg: #fef0c7;
+        --bad: #b42318;     --bad-bg: #fdecea;
+        --info: #1e40af;    --info-bg: #e8effe;
+        --neutral: #475467; --neutral-bg: #eef0f3;
+    }
+
+    .dash h1 {
+        margin: 0 0 4px;
+    }
+
+    .dash h2 {
+        margin: 0;
+        font-size: 18px;
+    }
+
+    .dash h3 {
+        margin: 0;
+        font-size: 15px;
+        font-weight: 700;
+    }
+
+    .dash .sr-only {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        overflow: hidden;
+        clip: rect(0 0 0 0);
+        white-space: nowrap;
+    }
+
+    .dash .muted {
+        color: var(--d-muted);
+    }
+
+    /* ---------- En-tête de page ---------- */
+
+    .dash-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-end;
+        gap: 16px;
+        flex-wrap: wrap;
+        margin-bottom: 24px;
+    }
+
+    .dash-subtitle {
+        margin: 0;
+        color: var(--d-muted);
+    }
+
+    /* ---------- Panneaux ---------- */
+
+    .dash .panel {
+        background: var(--d-surface);
+        border: 1px solid var(--d-border);
+        border-radius: var(--d-radius);
+        padding: 20px 22px;
+        margin-bottom: 20px;
+    }
+
+    .dash .panel-head {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 12px;
+        flex-wrap: wrap;
+        margin-bottom: 16px;
+    }
+
+    .dash .panel-head-tight {
+        margin-bottom: 12px;
+    }
+
+    .dash .section-note {
+        margin: 4px 0 0;
+        font-size: 13.5px;
+        color: var(--d-muted);
+    }
+
+    /* ---------- Boutons ---------- */
+
+    .dash .btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        min-height: 40px;
+        padding: 8px 16px;
+        font: inherit;
+        font-size: 14px;
+        font-weight: 700;
+        border: 1px solid transparent;
+        border-radius: 8px;
+        cursor: pointer;
+        text-decoration: none;
+        white-space: nowrap;
+        transition: background 0.15s ease, border-color 0.15s ease;
+    }
+
+    .dash .btn-primary {
+        background: var(--d-accent);
+        color: #fff;
+    }
+
+    .dash .btn-primary:hover {
+        background: var(--d-accent-hover);
+    }
+
+    .dash .btn-secondary {
+        background: var(--d-surface);
+        color: var(--d-accent);
+        border-color: var(--d-accent);
+    }
+
+    .dash .btn-secondary:hover {
+        background: var(--d-accent-soft);
+    }
+
+    .dash .btn:disabled {
+        opacity: 0.55;
+        cursor: not-allowed;
+    }
+
+    .dash .btn-link {
+        color: var(--d-muted);
+        font-weight: 600;
+        font-size: 14px;
+        text-decoration: none;
+        padding: 8px 4px;
+    }
+
+    .dash .btn-link:hover {
+        color: var(--d-text);
+        text-decoration: underline;
+    }
+
+    .dash .btn svg {
+        width: 17px;
+        height: 17px;
+        stroke: currentColor;
+        fill: none;
+        stroke-width: 2;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+    }
+
+    /* ---------- Messages ---------- */
+
+    .dash .message {
+        display: flex;
+        gap: 10px;
+        padding: 13px 16px;
+        margin-bottom: 20px;
+        border-radius: 8px;
+        border: 1px solid;
+        font-weight: 600;
+        font-size: 14.5px;
+    }
+
+    .dash .message.success { background: var(--ok-bg);   color: var(--ok);   border-color: #b7e4c7; }
+    .dash .message.error   { background: var(--bad-bg);  color: var(--bad);  border-color: #f5c6c1; }
+    .dash .message.warning { background: var(--warn-bg); color: var(--warn); border-color: #f8dc8c; }
+    .dash .message.info,
+    .dash .message.debug   { background: var(--info-bg); color: var(--info); border-color: #c5d5fb; }
+
+    /* ---------- Import (panneau repliable) ---------- */
+
+    .import-panel {
+        background: var(--d-surface);
+        border: 1px solid var(--d-border);
+        border-radius: var(--d-radius);
+        margin-bottom: 20px;
+    }
+
+    .import-panel > summary {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 14px 22px;
+        font-weight: 700;
+        cursor: pointer;
+        list-style: none;
+    }
+
+    .import-panel > summary::-webkit-details-marker {
+        display: none;
+    }
+
+    .import-panel > summary::after {
+        content: "";
+        width: 8px;
+        height: 8px;
+        border-right: 2px solid var(--d-muted);
+        border-bottom: 2px solid var(--d-muted);
+        transform: rotate(45deg);
+        transition: transform 0.15s ease;
+    }
+
+    .import-panel[open] > summary::after {
+        transform: rotate(-135deg);
+    }
+
+    .import-body {
+        padding: 0 22px 20px;
+        border-top: 1px solid var(--d-border);
+        padding-top: 16px;
+    }
+
+    .import-body p {
+        margin: 0 0 12px;
+    }
+
+    .import-body input[type="file"] {
+        display: block;
+        width: 100%;
+        max-width: 520px;
+        padding: 8px;
+        margin-top: 6px;
+        font: inherit;
+        font-size: 14px;
+        border: 1px dashed var(--d-border-strong);
+        border-radius: 8px;
+        background: var(--d-bg);
+    }
+
+    .import-body input[type="file"]::file-selector-button {
+        margin-right: 12px;
+        padding: 7px 14px;
+        font: inherit;
+        font-weight: 700;
+        border: 1px solid var(--d-border-strong);
+        border-radius: 6px;
+        background: var(--d-surface);
+        cursor: pointer;
+    }
+
+    .import-body .errorlist {
+        margin: 6px 0;
+        padding: 0;
+        list-style: none;
+        color: var(--bad);
+        font-weight: 600;
+        font-size: 14px;
+    }
+
+    .upload-progress {
+        display: none;
+        margin-top: 16px;
+        max-width: 520px;
+    }
+
+    .upload-progress.active {
+        display: block;
+    }
+
+    .upload-progress-info {
+        display: flex;
+        justify-content: space-between;
+        font-size: 13px;
+        color: var(--d-muted);
+        margin-bottom: 6px;
+    }
+
+    .upload-progress-track {
+        width: 100%;
+        height: 10px;
+        background: var(--neutral-bg);
+        border-radius: 999px;
+        overflow: hidden;
+    }
+
+    .upload-progress-bar {
+        width: 0%;
+        height: 100%;
+        background: var(--d-accent);
+        border-radius: 999px;
+        transition: width 0.2s ease;
+    }
+
+    .upload-progress-bar.processing {
+        width: 100% !important;
+        background: linear-gradient(90deg, var(--d-accent) 25%, #6b8cf5 50%, var(--d-accent) 75%);
+        background-size: 200% 100%;
+        animation: dash-stripes 1.2s linear infinite;
+    }
+
+    .upload-progress-bar.error {
+        background: var(--bad);
+    }
+
+    @keyframes dash-stripes {
+        from { background-position: 200% 0; }
+        to   { background-position: 0 0; }
+    }
+
+    /* ---------- Filtres ---------- */
+
+    .filters-form {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 14px;
+    }
+
+    .filters-form .field-search {
+        grid-column: 1 / -1;
+    }
+
+    .filters-form label {
+        display: block;
+        margin-bottom: 5px;
+        font-size: 13px;
+        font-weight: 700;
+        color: var(--d-muted);
+    }
+
+    .filters-form select,
+    .filters-form input[type="search"] {
+        width: 100%;
+        min-height: 42px;
+        padding: 9px 12px;
+        font: inherit;
+        font-size: 14.5px;
+        color: var(--d-text);
+        background: var(--d-surface);
+        border: 1px solid var(--d-border-strong);
+        border-radius: 8px;
+    }
+
+    .filters-form select:focus,
+    .filters-form input[type="search"]:focus {
+        outline: 2px solid var(--d-accent);
+        outline-offset: 1px;
+        border-color: var(--d-accent);
+    }
+
+    .active-filters {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 8px;
+        margin-top: 16px;
+        padding-top: 14px;
+        border-top: 1px solid var(--d-border);
+    }
+
+    .active-filters .label {
+        font-size: 13px;
+        font-weight: 700;
+        color: var(--d-muted);
+    }
+
+    .filter-badge {
+        display: inline-flex;
+        padding: 4px 10px;
+        border-radius: 999px;
+        background: var(--d-accent-soft);
+        color: var(--d-accent-hover);
+        font-size: 13px;
+        font-weight: 700;
+    }
+
+    /* ---------- Indicateurs clés ---------- */
+
+    .kpis {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 16px;
+        margin-bottom: 20px;
+    }
+
+    .kpi {
+        background: var(--d-surface);
+        border: 1px solid var(--d-border);
+        border-radius: var(--d-radius);
+        padding: 18px 20px;
+    }
+
+    .kpi-label {
+        margin: 0;
+        font-size: 13.5px;
+        font-weight: 600;
+        color: var(--d-muted);
+    }
+
+    .kpi-value {
+        margin: 4px 0 0;
+        font-size: 30px;
+        font-weight: 800;
+        letter-spacing: -0.02em;
+        line-height: 1.15;
+    }
+
+    .kpi-value small {
+        font-size: 14px;
+        font-weight: 600;
+        color: var(--d-muted);
+        letter-spacing: 0;
+    }
+
+    /* ---------- Graphiques ---------- */
+
+    .charts-grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 16px;
+        margin-bottom: 20px;
+    }
+
+    .chart-card {
+        background: var(--d-surface);
+        border: 1px solid var(--d-border);
+        border-radius: var(--d-radius);
+        padding: 18px 20px;
+        min-width: 0;
+    }
+
+    .chart-note {
+        margin: 4px 0 12px;
+        font-size: 13px;
+        line-height: 1.4;
+        color: var(--d-muted);
+        min-height: 2.8em;
+    }
+
+    .chart-box {
+        position: relative;
+        height: 280px;
+    }
+
+    .charts-empty {
+        background: var(--d-surface);
+        border: 1px dashed var(--d-border-strong);
+        border-radius: var(--d-radius);
+        padding: 32px;
+        margin-bottom: 20px;
+        text-align: center;
+        color: var(--d-muted);
+    }
+
+    /* ---------- Élèves à accompagner ---------- */
+
+    .priority-list {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 10px;
+        margin: 0;
+        padding: 0;
+        list-style: none;
+    }
+
+    .priority-item {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 11px 12px;
+        border: 1px solid var(--d-border);
+        border-radius: 8px;
+        background: var(--d-bg);
+    }
+
+    .priority-number {
+        flex-shrink: 0;
+        width: 30px;
+        height: 30px;
+        display: grid;
+        place-items: center;
+        border-radius: 50%;
+        background: var(--bad-bg);
+        color: var(--bad);
+        font-weight: 800;
+        font-size: 13px;
+    }
+
+    .priority-info strong {
+        display: block;
+    }
+
+    .priority-meta {
+        margin-top: 2px;
+        font-size: 13px;
+        color: var(--d-muted);
+    }
+
+    .low-average {
+        font-weight: 700;
+        color: var(--bad);
+    }
+
+    .empty-state {
+        margin: 0;
+        padding: 10px 0;
+        color: var(--ok);
+        font-weight: 700;
+    }
+
+    /* ---------- Classement ---------- */
+
+    .count-badge {
+        display: inline-flex;
+        padding: 5px 12px;
+        border-radius: 999px;
+        background: var(--neutral-bg);
+        color: var(--neutral);
+        font-size: 13.5px;
+        font-weight: 700;
+    }
+
+    .table-wrapper {
+        overflow-x: auto;
+        border: 1px solid var(--d-border);
+        border-radius: 8px;
+    }
+
+    .classement-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 14.5px;
+    }
+
+    .classement-table th,
+    .classement-table td {
+        padding: 11px 14px;
+        text-align: left;
+        vertical-align: middle;
+        border-bottom: 1px solid var(--d-border);
+    }
+
+    .classement-table thead th {
+        background: #f1f3f6;
+        color: var(--d-muted);
+        font-size: 12.5px;
+        font-weight: 700;
+        white-space: nowrap;
+    }
+
+    .classement-table tbody tr:last-child td {
+        border-bottom: none;
+    }
+
+    .classement-table tbody tr.row-main:hover td {
+        background: #f8f9fb;
+    }
+
+    .classement-table .col-num {
+        text-align: center;
+    }
+
+    .classement-table td.empty-row {
+        text-align: center;
+        padding: 28px;
+        color: var(--d-muted);
+    }
+
+    .eleve-nom {
+        font-weight: 700;
+    }
+
+    .eleve-matricule {
+        font-size: 12.5px;
+        color: var(--d-muted);
+    }
+
+    .moyenne {
+        font-weight: 800;
+        font-size: 15.5px;
+        white-space: nowrap;
+    }
+
+    /* Rang : pastille ronde, dorée / argentée / bronze pour le podium */
+
+    .rang {
+        display: inline-grid;
+        place-items: center;
+        min-width: 30px;
+        height: 30px;
+        padding: 0 6px;
+        border-radius: 999px;
+        font-weight: 800;
+        font-size: 13.5px;
+        background: var(--neutral-bg);
+        color: var(--neutral);
+    }
+
+    .podium-1 .rang { background: #fef0c7; color: #93370d; box-shadow: 0 0 0 2px #f5c451; }
+    .podium-2 .rang { background: #eef0f3; color: #344054; box-shadow: 0 0 0 2px #b0b7c3; }
+    .podium-3 .rang { background: #fde8d7; color: #9a3412; box-shadow: 0 0 0 2px #e2a173; }
+
+    /* Évolution : pastille + détail sur la ligne du dessous */
+
+    .evolution-cell {
+        min-width: 150px;
+    }
+
+    .evolution {
+        display: inline-block;
+        padding: 3px 10px;
+        border-radius: 999px;
+        font-size: 12.5px;
+        font-weight: 700;
+        white-space: nowrap;
+        cursor: help;
+    }
+
+    .evolution.hausse { background: var(--ok-bg);      color: var(--ok); }
+    .evolution.baisse { background: var(--bad-bg);     color: var(--bad); }
+    .evolution.stable { background: var(--neutral-bg); color: var(--neutral); }
+
+    .evolution-detail {
+        display: block;
+        margin-top: 3px;
+        font-size: 12px;
+        color: var(--d-muted);
+        white-space: nowrap;
+    }
+
+    .evolution-detail strong {
+        color: var(--d-text);
+    }
+
+    .evolution-aucune {
+        color: var(--d-muted);
+    }
+
+    .performance-badge {
+        display: inline-block;
+        padding: 4px 10px;
+        border-radius: 999px;
+        font-size: 12.5px;
+        font-weight: 700;
+        white-space: nowrap;
+        background: var(--neutral-bg);
+        color: var(--neutral);
+    }
+
+    .performance-badge.excellent      { background: var(--ok-bg);   color: var(--ok); }
+    .performance-badge.satisfaisant   { background: var(--info-bg); color: var(--info); }
+    .performance-badge.a-accompagner  { background: var(--warn-bg); color: var(--warn); }
+
+    /* Ligne dépliable des matières */
+
+    .btn-details {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        min-height: 34px;
+        padding: 6px 12px;
+        font: inherit;
+        font-size: 13px;
+        font-weight: 700;
+        color: var(--d-text);
+        background: var(--d-surface);
+        border: 1px solid var(--d-border-strong);
+        border-radius: 8px;
+        cursor: pointer;
+        white-space: nowrap;
+    }
+
+    .btn-details:hover {
+        background: var(--d-bg);
+    }
+
+    .btn-details[aria-expanded="true"] {
+        background: var(--d-accent-soft);
+        border-color: var(--d-accent);
+        color: var(--d-accent-hover);
+    }
+
+    .btn-details svg {
+        width: 16px;
+        height: 16px;
+        stroke: currentColor;
+        fill: none;
+        stroke-width: 2;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+    }
+
+    .details-row {
+        display: none;
+    }
+
+    .details-row.open {
+        display: table-row;
+    }
+
+    .classement-table .details-row td {
+        background: var(--d-bg);
+        padding: 14px 16px;
+    }
+
+    .details-row.open .matieres-grid {
+        animation: dash-slide 0.2s ease-out;
+    }
+
+    @keyframes dash-slide {
+        from { opacity: 0; transform: translateY(-5px); }
+        to   { opacity: 1; transform: translateY(0); }
+    }
+
+    .matieres-grid {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px 12px;
+    }
+
+    .matiere-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 5px 10px;
+        font-size: 13px;
+        background: var(--d-surface);
+        border: 1px solid var(--d-border);
+        border-radius: 6px;
+    }
+
+    .matiere-nom {
+        color: var(--d-muted);
+    }
+
+    .matiere-note {
+        font-weight: 700;
+    }
+
+    .matiere-note.low-average {
+        color: var(--bad);
+    }
+
+    /* ---------- Pagination ---------- */
+
+    .pagination {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 14px;
+        margin-top: 18px;
+    }
+
+    .pagination-link {
+        display: inline-flex;
+        align-items: center;
+        min-height: 40px;
+        padding: 8px 16px;
+        font-weight: 700;
+        font-size: 14px;
+        text-decoration: none;
+        color: var(--d-accent);
+        background: var(--d-surface);
+        border: 1px solid var(--d-accent);
+        border-radius: 8px;
+    }
+
+    a.pagination-link:hover {
+        background: var(--d-accent-soft);
+    }
+
+    .pagination-link.disabled {
+        color: var(--d-muted);
+        border-color: var(--d-border);
+        background: var(--d-bg);
+        cursor: not-allowed;
+    }
+
+    .pagination-info {
+        color: var(--d-muted);
+        font-size: 14px;
+        font-weight: 600;
+    }
+
+    #classement {
+        scroll-margin-top: 16px;
+    }
+
+    /* ---------- Responsive ---------- */
+
+    @media (max-width: 1100px) {
+        .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+        .filters-form { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+
+    @media (max-width: 1000px) {
+        .charts-grid { grid-template-columns: minmax(0, 1fr); }
+        .chart-note { min-height: 0; }
+    }
+
+    @media (max-width: 700px) {
+        .priority-list { grid-template-columns: 1fr; }
+    }
+
+    @media (max-width: 600px) {
+        .kpis { grid-template-columns: 1fr; }
+        .filters-form { grid-template-columns: 1fr; }
+        .dash .panel { padding: 16px; }
+        .import-panel > summary,
+        .import-body { padding-left: 16px; padding-right: 16px; }
+        .chart-box { height: 250px; }
+        .dash-header .btn { width: 100%; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        .dash * {
+            transition: none !important;
+            animation: none !important;
+        }
+    }
+
+    @media print {
+        .import-panel, .filters-panel, .pagination, .btn, .btn-details {
+            display: none !important;
+        }
+    }
+
+</style>
 {% endblock %}
 
 
 {% block content %}
 
+<div class="dash">
 
+    <!-- =========================
+         EN-TÊTE
+    ========================= -->
 
-<!-- =========================
-     TITRE
-========================= -->
-
-<h1>
-    📊 Tableau de bord analyse scolaire
-</h1>
-
-
-<!-- =========================
-     MESSAGES
-========================= -->
-
-{% if messages %}
-
-    {% for message in messages %}
-
-        <div class="message {{ message.tags }}">
-
-            {{ message }}
-
+    <header class="dash-header">
+        <div>
+            <h1>Tableau de bord</h1>
+            <p class="dash-subtitle">Analyse des résultats scolaires selon les filtres choisis.</p>
         </div>
 
-    {% endfor %}
-
-{% endif %}
-
-
-
-<!-- =========================
-     IMPORTATION + FILTRES
-========================= -->
-
-<div class="top-section">
+        <a href="{% url 'export_statistiques_excel' %}?{{ querystring_classement }}" class="btn btn-secondary">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M4 20h16"/></svg>
+            Exporter en Excel
+        </a>
+    </header>
 
 
-    <!-- IMPORTATION -->
+    <!-- =========================
+         MESSAGES
+    ========================= -->
 
-    <div class="import-box">
-
-        <h2>
-            📥 Importer les résultats
-        </h2>
-
-
-        <p>
-            Sélectionnez votre fichier Excel
-            contenant les résultats scolaires.
-        </p>
-
-
-        <form
-            method="POST"
-            enctype="multipart/form-data"
-            id="importForm"
-        >
-
-            {% csrf_token %}
-
-            {{ form.as_p }}
-
-
-            <button type="submit" id="importBtn">
-
-                Importer le fichier
-
-            </button>
-
-            <div class="upload-progress" id="uploadProgress" aria-live="polite">
-                <div class="upload-progress-info">
-                    <span id="uploadLabel">Envoi du fichier…</span>
-                    <span id="uploadPercent">0%</span>
-                </div>
-                <div class="upload-progress-track">
-                    <div class="upload-progress-bar" id="uploadBar"></div>
-                </div>
+    {% if messages %}
+        {% for message in messages %}
+            <div class="message {{ message.tags }}"
+                 role="{% if message.level >= 40 %}alert{% else %}status{% endif %}">
+                {{ message }}
             </div>
-
-        </form>
-
-    </div>
+        {% endfor %}
+    {% endif %}
 
 
-    <!-- FILTRES -->
+    <!-- =========================
+         IMPORTATION (repliable : action ponctuelle)
+    ========================= -->
 
-    <div class="filter-box">
+    <details class="import-panel" {% if form.errors %}open{% endif %}>
+        <summary>Importer les résultats</summary>
 
-        <div class="filter-box-header">
+        <div class="import-body">
+            <p class="muted">
+                Sélectionnez votre fichier Excel contenant les résultats scolaires.
+            </p>
 
-            <h2>
-                🔎 Analyser les résultats
-            </h2>
+            <form method="POST" enctype="multipart/form-data" id="importForm">
+                {% csrf_token %}
+                {{ form.as_p }}
 
-            <a
-                href="{% url 'export_statistiques_excel' %}?{{ querystring_classement }}"
-                class="btn-export"
-            >
-                📊 Exporter en Excel
-            </a>
+                <button type="submit" id="importBtn" class="btn btn-primary">
+                    Importer le fichier
+                </button>
 
+                <div class="upload-progress" id="uploadProgress" aria-live="polite">
+                    <div class="upload-progress-info">
+                        <span id="uploadLabel">Envoi du fichier…</span>
+                        <span id="uploadPercent">0%</span>
+                    </div>
+                    <div class="upload-progress-track">
+                        <div class="upload-progress-bar" id="uploadBar"></div>
+                    </div>
+                </div>
+            </form>
         </div>
+    </details>
 
+
+    <!-- =========================
+         FILTRES
+    ========================= -->
+
+    <section class="panel filters-panel" aria-labelledby="titre-filtres">
+
+        <div class="panel-head">
+            <h2 id="titre-filtres">Filtrer les résultats</h2>
+
+            {% if filtres_actifs or recherche %}
+                <a href="{% url 'dashboard' %}" class="btn-link">↺ Réinitialiser les filtres</a>
+            {% endif %}
+        </div>
 
         <!-- Le formulaire s'envoie automatiquement dès qu'un champ change -->
-        <form method="GET" id="filterForm">
+        <form method="GET" id="filterForm" class="filters-form" role="search">
 
-
-            <div class="filters">
-
-
-                <!-- ANNÉE -->
-                <div>
-
-                    <label for="annee">
-
-                        Année scolaire
-
-                    </label>
-
-
-                    <select
-                        name="annee"
-                        id="annee"
-                        onchange="document.getElementById('filterForm').submit();"
-                    >
-
-                        <option value="">
-
-                            Toutes les années
-
+            <div>
+                <label for="annee">Année scolaire</label>
+                <select name="annee" id="annee">
+                    <option value="">Toutes les années</option>
+                    {% for annee in annees %}
+                        <option value="{{ annee.id }}" {% if annee_selectionnee == annee.id|stringformat:"s" %}selected{% endif %}>
+                            {{ annee.nom }}
                         </option>
-
-
-                        {% for annee in annees %}
-
-                            <option
-                                value="{{ annee.id }}"
-
-                                {% if annee_selectionnee == annee.id|stringformat:"s" %}
-
-                                    selected
-
-                                {% endif %}
-                            >
-
-                                {{ annee.nom }}
-
-                            </option>
-
-                        {% endfor %}
-
-                    </select>
-
-                </div>
-
-                <!-- NIVEAU -->
-                <div>
-
-                <label for="niveau">
-
-                    Niveau
-
-                </label>
-
-
-                <select
-                    name="niveau"
-                    id="niveau"
-                    onchange="document.getElementById('filterForm').submit();"
-                >
-
-                    <option value="">
-
-                        Tous les niveaux
-
-                    </option>
-
-
-                    {% for niveau in niveaux %}
-
-                        <option
-                            value="{{ niveau }}"
-
-                            {% if niveau_selectionne == niveau %}
-
-                                selected
-
-                            {% endif %}
-                        >
-
-                            {{ niveau }}
-
-                        </option>
-
                     {% endfor %}
-
                 </select>
-
-                </div>
-                <!-- CLASSE -->
-
-                <div>
-
-                    <label for="classe">
-
-                        Classe
-
-                    </label>
-
-
-                    <select
-                        name="classe"
-                        id="classe"
-                        onchange="document.getElementById('filterForm').submit();"
-                    >
-
-                        <option value="">
-
-                            Toutes les classes
-
-                        </option>
-
-
-                        {% for classe in classes %}
-
-                            <option
-                                value="{{ classe.id }}"
-
-                                {% if classe_selectionnee == classe.id|stringformat:"s" %}
-
-                                    selected
-
-                                {% endif %}
-                            >
-
-                                {{ classe.nom }}
-
-                            </option>
-
-                        {% endfor %}
-
-                    </select>
-
-                </div>
-
-
-                <!-- TRIMESTRE -->
-
-                <div>
-
-                    <label for="trimestre">
-
-                        Trimestre
-
-                    </label>
-
-
-                    <select
-                        name="trimestre"
-                        id="trimestre"
-                        onchange="document.getElementById('filterForm').submit();"
-                    >
-
-                        <option value="">
-
-                            Tous les trimestres
-
-                        </option>
-
-
-                        <option
-                            value="T1"
-
-                            {% if trimestre_selectionne == "T1" %}
-
-                                selected
-
-                            {% endif %}
-                        >
-
-                            Trimestre 1
-
-                        </option>
-
-
-                        <option
-                            value="T2"
-
-                            {% if trimestre_selectionne == "T2" %}
-
-                                selected
-
-                            {% endif %}
-                        >
-
-                            Trimestre 2
-
-                        </option>
-
-
-                        <option
-                            value="T3"
-
-                            {% if trimestre_selectionne == "T3" %}
-
-                                selected
-
-                            {% endif %}
-                        >
-
-                            Trimestre 3
-
-                        </option>
-
-                    </select>
-
-                </div>
-
-
             </div>
 
+            <div>
+                <label for="niveau">Niveau</label>
+                <select name="niveau" id="niveau">
+                    <option value="">Tous les niveaux</option>
+                    {% for niveau in niveaux %}
+                        <option value="{{ niveau }}" {% if niveau_selectionne == niveau %}selected{% endif %}>
+                            {{ niveau }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
 
-            <!-- RECHERCHE PAR NOM OU MATRICULE -->
-            <div class="search-box">
+            <div>
+                <label for="classe">Classe</label>
+                <select name="classe" id="classe">
+                    <option value="">Toutes les classes</option>
+                    {% for classe in classes %}
+                        <option value="{{ classe.id }}" {% if classe_selectionnee == classe.id|stringformat:"s" %}selected{% endif %}>
+                            {{ classe.nom }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
 
-                <label for="recherche">
-                    🔍 Rechercher un élève
-                </label>
+            <div>
+                <label for="trimestre">Trimestre</label>
+                <select name="trimestre" id="trimestre">
+                    <option value="">Tous les trimestres</option>
+                    <option value="T1" {% if trimestre_selectionne == "T1" %}selected{% endif %}>Trimestre 1</option>
+                    <option value="T2" {% if trimestre_selectionne == "T2" %}selected{% endif %}>Trimestre 2</option>
+                    <option value="T3" {% if trimestre_selectionne == "T3" %}selected{% endif %}>Trimestre 3</option>
+                </select>
+            </div>
 
+            <div class="field-search">
+                <label for="recherche">Rechercher un élève</label>
                 <input
                     type="search"
                     name="recherche"
                     id="recherche"
                     value="{{ recherche }}"
-                    placeholder="Nom, prénom ou matricule..."
+                    placeholder="Nom, prénom ou matricule…"
                     autocomplete="off"
                 >
-
             </div>
 
-            <div class="filter-actions">
-
-                <button type="submit">
-                    Rechercher
-                </button>
-
-                <a href="{% url 'dashboard' %}" class="btn-reset">
-                    ↺ Réinitialiser les filtres
-                </a>
-
-            </div>
+            <noscript>
+                <button type="submit" class="btn btn-primary">Appliquer les filtres</button>
+            </noscript>
 
         </form>
 
         {% if filtres_actifs %}
-
             <div class="active-filters">
-
-                <span class="active-filters-title">
-                    Filtres actifs :
-                </span>
-
+                <span class="label">Filtres actifs :</span>
                 {% for filtre in filtres_actifs %}
-
-                    <span class="filter-badge">
-                        {{ filtre.libelle }} : {{ filtre.valeur }}
-                    </span>
-
+                    <span class="filter-badge">{{ filtre.libelle }} : {{ filtre.valeur }}</span>
                 {% endfor %}
-
             </div>
-
         {% endif %}
 
-    </div>
+    </section>
 
-</div>
 
-<!-- =========================
-     VISUALISATIONS (GRAPHIQUES)
-========================= -->
+    <!-- =========================
+         INDICATEURS CLÉS
+    ========================= -->
 
-<div class="charts-section" id="charts-section">
+    <section class="kpis" aria-label="Indicateurs clés">
 
-    {{ donnees_graphiques|json_script:"donnees-graphiques" }}
-
-    {% if donnees_graphiques.a_des_donnees %}
-
-        <div class="charts-grid">
-
-            <div class="chart-card">
-                <h4 class="chart-title">Élèves par tranche de moyenne</h4>
-                <p class="chart-note">Répartition des élèves. Au centre : taux de réussite (moyenne ≥ 10).</p>
-                <div class="chart-box">
-                    <canvas id="graphTranches" role="img" aria-label="Répartition des élèves par tranche de moyenne"></canvas>
-                </div>
-            </div>
-
-            <div class="chart-card">
-                <h4 class="chart-title">Moyenne par niveau</h4>
-                <p class="chart-note">Ligne pointillée : seuil de 10/20.</p>
-                <div class="chart-box">
-                    <canvas id="graphNiveauMoyenne" role="img" aria-label="Moyenne par niveau"></canvas>
-                </div>
-            </div>
-
-            <div class="chart-card">
-                <h4 class="chart-title">Filles et garçons par tranche</h4>
-                <p class="chart-note">Nombre de filles et de garçons dans chaque tranche de moyenne.</p>
-                <div class="chart-box">
-                    <canvas id="graphGenre" role="img" aria-label="Répartition des filles et des garçons par tranche de moyenne"></canvas>
-                </div>
-            </div>
-
+        <div class="kpi">
+            <p class="kpi-label">Élèves</p>
+            <p class="kpi-value">{{ statistiques.nombre_eleves|default:0 }}</p>
         </div>
 
-    {% else %}
-
-        <div class="charts-empty">
-            Aucune donnée à visualiser pour les filtres sélectionnés.
+        <div class="kpi">
+            <p class="kpi-label">Moyenne générale</p>
+            <p class="kpi-value">
+                {% with moyenne=statistiques.moyenne_classe|floatformat:2 %}
+                    {% if moyenne %}{{ moyenne }} <small>/ 20</small>{% else %}—{% endif %}
+                {% endwith %}
+            </p>
         </div>
 
-    {% endif %}
+        <div class="kpi">
+            <p class="kpi-label">Meilleure moyenne</p>
+            <p class="kpi-value">
+                {% with moyenne=statistiques.meilleure_moyenne|floatformat:2 %}
+                    {% if moyenne %}{{ moyenne }} <small>/ 20</small>{% else %}—{% endif %}
+                {% endwith %}
+            </p>
+        </div>
 
-</div>
+        <div class="kpi">
+            <p class="kpi-label">Plus faible moyenne</p>
+            <p class="kpi-value">
+                {% with moyenne=statistiques.plus_faible_moyenne|floatformat:2 %}
+                    {% if moyenne %}{{ moyenne }} <small>/ 20</small>{% else %}—{% endif %}
+                {% endwith %}
+            </p>
+        </div>
 
-
-
-<!-- =========================
-     STATISTIQUES
-========================= -->
-
-<div class="cards">
-
-
-    <!-- NOMBRE D'ÉLÈVES -->
-
-    <div class="card">
-
-        <h2>
-
-            {{ statistiques.nombre_eleves|default:0 }}
-
-        </h2>
-
-        <p>
-
-            Élèves
-
-        </p>
-
-    </div>
+    </section>
 
 
-    <!-- MOYENNE -->
+    <!-- =========================
+         VISUALISATIONS (GRAPHIQUES)
+    ========================= -->
 
-    <div class="card">
+    <section id="charts-section" aria-label="Graphiques">
 
-        <h2>
+        {{ donnees_graphiques|json_script:"donnees-graphiques" }}
 
-            {{ statistiques.moyenne_classe|floatformat:2|default:"0.00" }}
+        {% if donnees_graphiques.a_des_donnees %}
+            <div class="charts-grid">
 
-        </h2>
-
-        <p>
-
-            Moyenne de la classe
-
-        </p>
-
-    </div>
-
-
-    <!-- MEILLEURE MOYENNE -->
-
-    <div class="card">
-
-        <h2>
-
-            {{ statistiques.meilleure_moyenne|floatformat:2|default:"0.00" }}
-
-        </h2>
-
-        <p>
-
-            Meilleure moyenne
-
-        </p>
-
-    </div>
-
-
-    <!-- PLUS FAIBLE -->
-
-    <div class="card">
-
-        <h2>
-
-            {{ statistiques.plus_faible_moyenne|floatformat:2|default:"0.00" }}
-
-        </h2>
-
-        <p>
-
-            Plus faible moyenne
-
-        </p>
-
-    </div>
-
-
-</div>
-
-
-
-
-<!-- =========================
-     ACCOMPAGNEMENT / ALERTES
-========================= -->
-
-<div class="accompagnement-section">
-
-    <div class="accompagnement-header">
-        <h2>🎯 Suivi et accompagnement des élèves</h2>
-        <p>
-            Cette section met en évidence les résultats nécessitant une attention pédagogique,
-            selon les filtres actuellement sélectionnés.
-        </p>
-    </div>
-
-    <div class="accompagnement-card">
-        <h3>🚨 Élèves à accompagner prioritairement</h3>
-        <p style="color:#666; font-size:13px; margin-top:-5px;">
-            Les 10 moyennes les plus faibles parmi les résultats filtrés.
-        </p>
-
-        {% if eleves_a_accompagner %}
-            <div class="priority-list">
-                {% for resultat in eleves_a_accompagner %}
-                    <div class="priority-item">
-                        <span class="priority-number">{{ forloop.counter }}</span>
-                        <div class="priority-info">
-                            <strong>
-                                {{ resultat.eleve.nom }} {{ resultat.eleve.prenoms }}
-                            </strong>
-                            <div class="priority-meta">
-                                Matricule : {{ resultat.eleve.matricule }} ·
-                                Classe : {{ resultat.classe.nom }} ·
-                                Moyenne : <span class="low-average">{{ resultat.moyenne_trimestrielle|default:"-" }} / 20</span>
-                            </div>
-                        </div>
+                <div class="chart-card">
+                    <h3>Élèves par tranche de moyenne</h3>
+                    <p class="chart-note">Répartition des élèves. Au centre : taux de réussite (moyenne ≥ 10).</p>
+                    <div class="chart-box">
+                        <canvas id="graphTranches" role="img" aria-label="Répartition des élèves par tranche de moyenne"></canvas>
                     </div>
-                {% endfor %}
+                </div>
+
+                <div class="chart-card">
+                    <h3>Moyenne par niveau</h3>
+                    <p class="chart-note">Ligne pointillée : seuil de 10/20.</p>
+                    <div class="chart-box">
+                        <canvas id="graphNiveauMoyenne" role="img" aria-label="Moyenne par niveau"></canvas>
+                    </div>
+                </div>
+
+                <div class="chart-card">
+                    <h3>Filles et garçons par tranche</h3>
+                    <p class="chart-note">Nombre de filles et de garçons dans chaque tranche de moyenne.</p>
+                    <div class="chart-box">
+                        <canvas id="graphGenre" role="img" aria-label="Répartition des filles et des garçons par tranche de moyenne"></canvas>
+                    </div>
+                </div>
+
             </div>
         {% else %}
-            <div class="empty-accompagnement">
-                Aucun élève à accompagner prioritairement.
+            <div class="charts-empty">
+                Aucune donnée à visualiser pour les filtres sélectionnés.
             </div>
         {% endif %}
-    </div>
-</div>
 
+    </section>
 
-<!-- =========================
-     CLASSEMENT
-========================= -->
 
-<div class="table-container" id="classement">
+    <!-- =========================
+         ÉLÈVES À ACCOMPAGNER
+    ========================= -->
 
+    <section class="panel" aria-labelledby="titre-accompagnement">
 
-    <div class="classement-header">
-
-        <h2>
-            🏆 Classement des élèves
-        </h2>
-
-        <span class="total-resultats">
-            📊 {{ total_resultats }} résultat{{ total_resultats|pluralize }}
-        </span>
-
-    </div>
-
-
-    <div class="table-wrapper">
-
-
-        <table class="classement-table">
-
-
-            <thead>
-
-                <tr>
-
-                    <th>
-                        Rang
-                    </th>
-
-                    <th>
-                        Matricule
-                    </th>
-
-                    <th>
-                        Élève
-                    </th>
-
-                    <th>
-                        Classe
-                    </th>
-
-                    <th>
-                        Moyenne
-                    </th>
-
-                    <th>
-                        Évolution
-                    </th>
-
-                    <th>
-                        Performance
-                    </th>
-
-                    <th>
-                        Matières
-                    </th>
-
-                </tr>
-
-            </thead>
-
-
-            <tbody>
-
-
-                {% for resultat in classement %}
-
-
-                    <tr class="{% if resultat.rang == 1 %}podium-1{% elif resultat.rang == 2 %}podium-2{% elif resultat.rang == 3 %}podium-3{% endif %}">
-
-
-                        <td class="podium-rang">
-
-                            {% if resultat.rang == 1 %}🥇{% elif resultat.rang == 2 %}🥈{% elif resultat.rang == 3 %}🥉{% else %}{{ resultat.rang|default:"-" }}{% endif %}
-
-                        </td>
-
-
-                        <td>
-
-                            {{ resultat.eleve.matricule }}
-
-                        </td>
-
-
-                        <td>
-
-                            {{ resultat.eleve.nom }}
-
-                            {{ resultat.eleve.prenoms }}
-
-                        </td>
-
-
-                        <td>
-
-                            {{ resultat.classe.nom }}
-
-                        </td>
-
-
-                        <td class="moyenne">
-
-                            {{ resultat.moyenne_trimestrielle|default:"-" }}
-
-                        </td>
-
-
-                        <td style="white-space: nowrap;">
-                            {% if resultat.trimestre == "T1" %}
-                            {% elif resultat.evolution_sens == "hausse" %}
-                                <span class="evolution-detail">{{ resultat.evolution_ref }} : <strong>{{ resultat.evolution_precedente|floatformat:2 }}</strong> → {{ resultat.trimestre }} : <strong>{{ resultat.moyenne_trimestrielle|floatformat:2 }}</strong></span>
-                                <span class="evolution hausse" title="En hausse par rapport à {{ resultat.evolution_ref }}">↑ +{{ resultat.evolution|floatformat:2 }}</span>
-                            {% elif resultat.evolution_sens == "baisse" %}
-                                <span class="evolution-detail">{{ resultat.evolution_ref }} : <strong>{{ resultat.evolution_precedente|floatformat:2 }}</strong> → {{ resultat.trimestre }} : <strong>{{ resultat.moyenne_trimestrielle|floatformat:2 }}</strong></span>
-                                <span class="evolution baisse" title="En baisse par rapport à {{ resultat.evolution_ref }}">↓ {{ resultat.evolution|floatformat:2 }}</span>
-                            {% elif resultat.evolution_sens == "stable" %}
-                                <span class="evolution-detail">{{ resultat.evolution_ref }} : <strong>{{ resultat.evolution_precedente|floatformat:2 }}</strong> → {{ resultat.trimestre }} : <strong>{{ resultat.moyenne_trimestrielle|floatformat:2 }}</strong></span>
-                                <span class="evolution stable" title="Moyenne identique à {{ resultat.evolution_ref }}">= 0,00</span>
-                            {% else %}
-                                <span class="evolution-aucune" title="Pas de trimestre précédent disponible">—</span>
-                            {% endif %}
-                        </td>
-
-
-                        <td>
-
-                            <span class="performance-badge {{ resultat.performance_css }}">
-                                {{ resultat.performance }}
-                            </span>
-
-                        </td>
-
-
-                        <td>
-
-                            <button
-                                type="button"
-                                class="btn-details"
-                                onclick="this.closest('tr').nextElementSibling.classList.toggle('open');"
-                            >
-                                👁️ Voir
-                            </button>
-
-                        </td>
-
-
-                    </tr>
-
-
-                    <tr class="details-row">
-
-                        <td colspan="8">
-
-                            {% if resultat.details_matieres %}
-
-                                <div class="matieres-grid">
-
-                                    {% for matiere in resultat.details_matieres %}
-
-                                        <span class="matiere-pill">
-                                            <span class="matiere-nom">{{ matiere.nom }}</span>
-                                            <span class="matiere-note {% if matiere.note < 10 %}low-average{% endif %}">
-                                                {{ matiere.note }} / 20
-                                            </span>
-                                        </span>
-
-                                    {% endfor %}
-
-                                </div>
-
-                            {% else %}
-
-                                <span style="color:#777; font-size:13px; padding: 6px 4px; display:block;">
-                                    Aucune note de matière renseignée pour cet élève.
-                                </span>
-
-                            {% endif %}
-
-                        </td>
-
-                    </tr>
-
-
-                {% empty %}
-
-
-                    <tr>
-
-                        <td colspan="8">
-
-                            Aucun résultat trouvé.
-
-                        </td>
-
-                    </tr>
-
-
-                {% endfor %}
-
-
-            </tbody>
-
-
-        </table>
-
-
-    </div>
-
-
-    <!-- ========= PAGINATION DU CLASSEMENT ========= -->
-
-    {% if classement.paginator.num_pages > 1 %}
-
-        <div class="pagination">
-
-            {% if classement.has_previous %}
-
-                <a
-                    href="?{% if querystring_classement %}{{ querystring_classement }}&{% endif %}page_classement={{ classement.previous_page_number }}#classement"
-                    class="pagination-link"
-                >
-                    &laquo; Précédent
-                </a>
-
-            {% else %}
-
-                <span class="pagination-link disabled">
-                    &laquo; Précédent
-                </span>
-
-            {% endif %}
-
-            <span class="pagination-info">
-                Page {{ classement.number }} sur {{ classement.paginator.num_pages }}
-            </span>
-
-            {% if classement.has_next %}
-
-                <a
-                    href="?{% if querystring_classement %}{{ querystring_classement }}&{% endif %}page_classement={{ classement.next_page_number }}#classement"
-                    class="pagination-link"
-                >
-                    Suivant &raquo;
-                </a>
-
-            {% else %}
-
-                <span class="pagination-link disabled">
-                    Suivant &raquo;
-                </span>
-
-            {% endif %}
-
+        <div class="panel-head panel-head-tight">
+            <div>
+                <h2 id="titre-accompagnement">Élèves à accompagner prioritairement</h2>
+                <p class="section-note">
+                    Les 10 moyennes les plus faibles parmi les résultats filtrés.
+                </p>
+            </div>
         </div>
 
-    {% endif %}
+        {% if eleves_a_accompagner %}
+            <ol class="priority-list">
+                {% for resultat in eleves_a_accompagner %}
+                    <li class="priority-item">
+                        <span class="priority-number">{{ forloop.counter }}</span>
+                        <div class="priority-info">
+                            <strong>{{ resultat.eleve.nom }} {{ resultat.eleve.prenoms }}</strong>
+                            <div class="priority-meta">
+                                {{ resultat.eleve.matricule }} · {{ resultat.classe.nom }} ·
+                                <span class="low-average">{{ resultat.moyenne_trimestrielle|floatformat:2|default:"-" }} / 20</span>
+                            </div>
+                        </div>
+                    </li>
+                {% endfor %}
+            </ol>
+        {% else %}
+            <p class="empty-state">Aucun élève à accompagner prioritairement.</p>
+        {% endif %}
 
+    </section>
+
+
+    <!-- =========================
+         CLASSEMENT
+    ========================= -->
+
+    <section class="panel" id="classement" aria-labelledby="titre-classement">
+
+        <div class="panel-head">
+            <h2 id="titre-classement">Classement des élèves</h2>
+            <span class="count-badge">{{ total_resultats }} résultat{{ total_resultats|pluralize }}</span>
+        </div>
+
+        {% with seuil=donnees_graphiques.seuil|default:10 %}
+        <div class="table-wrapper">
+            <table class="classement-table">
+                <caption class="sr-only">Classement des élèves selon les filtres choisis</caption>
+                <thead>
+                    <tr>
+                        <th scope="col" class="col-num">Rang</th>
+                        <th scope="col">Élève</th>
+                        <th scope="col">Classe</th>
+                        <th scope="col">Moyenne</th>
+                        <th scope="col">Évolution</th>
+                        <th scope="col">Performance</th>
+                        <th scope="col" class="col-num">Matières</th>
+                    </tr>
+                </thead>
+
+                <tbody>
+                    {% for resultat in classement %}
+                        <tr class="row-main {% if resultat.rang == 1 %}podium-1{% elif resultat.rang == 2 %}podium-2{% elif resultat.rang == 3 %}podium-3{% endif %}">
+
+                            <td class="col-num">
+                                <span class="rang">
+                                    <span class="sr-only">Rang </span>{{ resultat.rang|default:"-" }}
+                                </span>
+                            </td>
+
+                            <td>
+                                <div class="eleve-nom">{{ resultat.eleve.nom }} {{ resultat.eleve.prenoms }}</div>
+                                <div class="eleve-matricule">{{ resultat.eleve.matricule }}</div>
+                            </td>
+
+                            <td>{{ resultat.classe.nom }}</td>
+
+                            <td class="moyenne {% if resultat.moyenne_trimestrielle is not None and resultat.moyenne_trimestrielle < seuil %}low-average{% endif %}">
+                                {% if resultat.moyenne_trimestrielle is not None %}{{ resultat.moyenne_trimestrielle|floatformat:2 }}{% else %}—{% endif %}
+                            </td>
+
+                            <td class="evolution-cell">
+                                {% if resultat.trimestre == "T1" %}
+                                    <span class="evolution-aucune" title="Premier trimestre : pas de comparaison">—</span>
+                                {% elif resultat.evolution_sens == "hausse" %}
+                                    <span class="evolution hausse" title="En hausse par rapport à {{ resultat.evolution_ref }}">↑ +{{ resultat.evolution|floatformat:2 }}</span>
+                                    <span class="evolution-detail">{{ resultat.evolution_ref }} : <strong>{{ resultat.evolution_precedente|floatformat:2 }}</strong> → {{ resultat.trimestre }} : <strong>{{ resultat.moyenne_trimestrielle|floatformat:2 }}</strong></span>
+                                {% elif resultat.evolution_sens == "baisse" %}
+                                    <span class="evolution baisse" title="En baisse par rapport à {{ resultat.evolution_ref }}">↓ {{ resultat.evolution|floatformat:2 }}</span>
+                                    <span class="evolution-detail">{{ resultat.evolution_ref }} : <strong>{{ resultat.evolution_precedente|floatformat:2 }}</strong> → {{ resultat.trimestre }} : <strong>{{ resultat.moyenne_trimestrielle|floatformat:2 }}</strong></span>
+                                {% elif resultat.evolution_sens == "stable" %}
+                                    <span class="evolution stable" title="Moyenne identique à {{ resultat.evolution_ref }}">= 0,00</span>
+                                    <span class="evolution-detail">{{ resultat.evolution_ref }} : <strong>{{ resultat.evolution_precedente|floatformat:2 }}</strong> → {{ resultat.trimestre }} : <strong>{{ resultat.moyenne_trimestrielle|floatformat:2 }}</strong></span>
+                                {% else %}
+                                    <span class="evolution-aucune" title="Pas de trimestre précédent disponible">—</span>
+                                {% endif %}
+                            </td>
+
+                            <td>
+                                <span class="performance-badge {{ resultat.performance_css }}">{{ resultat.performance }}</span>
+                            </td>
+
+                            <td class="col-num">
+                                <button
+                                    type="button"
+                                    class="btn-details"
+                                    aria-expanded="false"
+                                    aria-controls="matieres-{{ forloop.counter }}"
+                                    aria-label="Voir les moyennes par matière de {{ resultat.eleve.nom }} {{ resultat.eleve.prenoms }}"
+                                >
+                                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg>
+                                    <span class="btn-details-label">Voir</span>
+                                </button>
+                            </td>
+
+                        </tr>
+
+                        <tr class="details-row" id="matieres-{{ forloop.counter }}">
+                            <td colspan="7">
+                                {% if resultat.details_matieres %}
+                                    <div class="matieres-grid">
+                                        {% for matiere in resultat.details_matieres %}
+                                            <span class="matiere-pill">
+                                                <span class="matiere-nom">{{ matiere.nom }}</span>
+                                                <span class="matiere-note {% if matiere.note < seuil %}low-average{% endif %}">{{ matiere.note|floatformat:2 }} / 20</span>
+                                            </span>
+                                        {% endfor %}
+                                    </div>
+                                {% else %}
+                                    <span class="muted">Aucune note de matière renseignée pour cet élève.</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+
+                    {% empty %}
+                        <tr>
+                            <td colspan="7" class="empty-row">
+                                Aucun résultat trouvé pour ces filtres.
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% endwith %}
+
+
+        <!-- ========= PAGINATION DU CLASSEMENT ========= -->
+
+        {% if classement.paginator.num_pages > 1 %}
+            <nav class="pagination" aria-label="Pagination du classement">
+
+                {% if classement.has_previous %}
+                    <a href="?{% if querystring_classement %}{{ querystring_classement }}&amp;{% endif %}page_classement={{ classement.previous_page_number }}#classement" class="pagination-link">
+                        &laquo; Précédent
+                    </a>
+                {% else %}
+                    <span class="pagination-link disabled" aria-disabled="true">&laquo; Précédent</span>
+                {% endif %}
+
+                <span class="pagination-info">
+                    Page {{ classement.number }} sur {{ classement.paginator.num_pages }}
+                </span>
+
+                {% if classement.has_next %}
+                    <a href="?{% if querystring_classement %}{{ querystring_classement }}&amp;{% endif %}page_classement={{ classement.next_page_number }}#classement" class="pagination-link">
+                        Suivant &raquo;
+                    </a>
+                {% else %}
+                    <span class="pagination-link disabled" aria-disabled="true">Suivant &raquo;</span>
+                {% endif %}
+
+            </nav>
+        {% endif %}
+
+    </section>
 
 </div>
-
-
 
 {% endblock %}
 
@@ -1992,74 +1280,113 @@
 {% block extra_script %}
 
 <script>
+(function () {
+    "use strict";
 
-    // Si la page a été chargée avec l'ancre #classement (ex. lien
-    // de pagination sans JavaScript), on la retire de l'adresse
-    // pour ne pas perturber les futurs changements de filtres.
+    // ------------------------------------------------------------
+    // Ancre #classement : retirée de l'adresse pour que changer un
+    // filtre ne fasse pas défiler la page vers le tableau.
+    // ------------------------------------------------------------
     if (window.location.hash === "#classement") {
-        history.replaceState(
-            {}, "", window.location.pathname + window.location.search
-        );
+        history.replaceState({}, "", window.location.pathname + window.location.search);
     }
 
-    // Empêche le formulaire de filtres d'hériter d'une éventuelle
-    // ancre #classement présente dans l'URL (ex. après une
-    // pagination), afin que changer un filtre ne fasse pas défiler
-    // la page vers le tableau de classement.
-    var formulaireFiltres = document.getElementById("filterForm");
-    if (formulaireFiltres) {
-        formulaireFiltres.action = window.location.pathname;
-    }
+    var formulaire = document.getElementById("filterForm");
 
-    // Pagination du classement sans rechargement de page,
-    // pour que le tableau reste fixe (pas de saut de scroll).
-    document.addEventListener("click", function (e) {
+    if (formulaire) {
+        formulaire.action = window.location.pathname;
 
-        var lien = e.target.closest(
-            "#classement .pagination-link[href]"
-        );
+        // ---- Filtres automatiques : les listes se valident au changement ----
+        formulaire.addEventListener("change", function (e) {
+            if (e.target.tagName !== "SELECT") { return; }
 
-        if (!lien) {
-            return;
+            // Changer de niveau ou d'année : la classe choisie n'a plus forcément de sens.
+            if (e.target.id === "niveau" || e.target.id === "annee") {
+                var classe = document.getElementById("classe");
+                if (classe) { classe.value = ""; }
+            }
+            formulaire.submit();
+        });
+
+        // ---- Recherche automatique, 0,5 s après la dernière frappe ----
+        var recherche = document.getElementById("recherche");
+
+        if (recherche) {
+            try {
+                if (sessionStorage.getItem("dashRecherche") === "1") {
+                    sessionStorage.removeItem("dashRecherche");
+                    recherche.focus();
+                    var fin = recherche.value.length;
+                    recherche.setSelectionRange(fin, fin);
+                }
+            } catch (e) {}
+
+            var minuteur;
+            recherche.addEventListener("input", function () {
+                clearTimeout(minuteur);
+                minuteur = setTimeout(function () {
+                    try { sessionStorage.setItem("dashRecherche", "1"); } catch (e) {}
+                    formulaire.submit();
+                }, 500);
+            });
         }
+    }
+
+    // ------------------------------------------------------------
+    // Bouton « Voir » : délégation d'événement, donc il continue de
+    // fonctionner quand le tableau est remplacé par la pagination.
+    // ------------------------------------------------------------
+    document.addEventListener("click", function (e) {
+        var bouton = e.target.closest(".btn-details");
+        if (!bouton) { return; }
+
+        var ligne = document.getElementById(bouton.getAttribute("aria-controls"));
+        if (!ligne) { return; }
+
+        var ouvert = ligne.classList.toggle("open");
+        bouton.setAttribute("aria-expanded", ouvert ? "true" : "false");
+        bouton.querySelector(".btn-details-label").textContent = ouvert ? "Masquer" : "Voir";
+    });
+
+    // ------------------------------------------------------------
+    // Pagination du classement sans rechargement de page.
+    // ------------------------------------------------------------
+    document.addEventListener("click", function (e) {
+        var lien = e.target.closest("#classement .pagination-link[href]");
+        if (!lien) { return; }
 
         e.preventDefault();
 
+        var bloc = document.getElementById("classement");
+        bloc.setAttribute("aria-busy", "true");
+
         fetch(lien.href)
             .then(function (reponse) {
+                if (!reponse.ok) { throw new Error("HTTP " + reponse.status); }
                 return reponse.text();
             })
             .then(function (html) {
+                var doc = new DOMParser().parseFromString(html, "text/html");
+                var nouveau = doc.getElementById("classement");
+                var ancien = document.getElementById("classement");
 
-                var parser = new DOMParser();
-                var doc = parser.parseFromString(html, "text/html");
-
-                var nouveauBloc = doc.getElementById("classement");
-                var ancienBloc = document.getElementById("classement");
-
-                if (nouveauBloc && ancienBloc) {
-                    ancienBloc.replaceWith(nouveauBloc);
-                }
+                if (nouveau && ancien) { ancien.replaceWith(nouveau); }
 
                 var url = new URL(lien.href, window.location.href);
                 url.hash = "";
-
                 history.pushState({}, "", url.toString());
             })
             .catch(function () {
-                // En cas de problème réseau, on retombe sur une
-                // navigation classique.
+                // Problème réseau : navigation classique.
                 window.location.href = lien.href;
             });
-
     });
 
-    // Si l'utilisateur revient en arrière après une pagination
-    // AJAX, on recharge simplement la page pour rester cohérent.
+    // Retour arrière après une pagination AJAX : on recharge pour rester cohérent.
     window.addEventListener("popstate", function () {
         window.location.reload();
     });
-
+})();
 </script>
 
 
@@ -2068,68 +1395,51 @@
 ========================= -->
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
-
 <script>
-
 (function () {
-
     "use strict";
 
     var section = document.getElementById("charts-section");
     var noeudDonnees = document.getElementById("donnees-graphiques");
 
-    if (!section || !noeudDonnees) {
-        return;
-    }
+    if (!section || !noeudDonnees) { return; }
 
     // Chart.js vient d'un CDN : on prévient l'utilisateur s'il est injoignable.
     if (typeof Chart === "undefined") {
         section.insertAdjacentHTML(
             "beforeend",
-            '<div class="message error">Impossible de charger la bibliothèque ' +
-            'de graphiques. Vérifiez votre connexion Internet, puis ' +
-            'rechargez la page.</div>'
+            '<div class="message error" role="alert">Impossible de charger la bibliothèque ' +
+            'de graphiques. Vérifiez votre connexion Internet, puis rechargez la page.</div>'
         );
         return;
     }
 
     var D = JSON.parse(noeudDonnees.textContent);
+    if (!D.a_des_donnees) { return; }
 
-    if (!D.a_des_donnees) {
-        return;
-    }
-
-
-    // ------------------------------------------------------------
-    // Couleurs et réglages communs
-    // ------------------------------------------------------------
-
+    // ---- Couleurs alignées sur la charte de base.html ----
     var COULEUR = {
-        vert: "#198754",
-        ambre: "#f0ad4e",
-        rouge: "#dc3545",
-        gris: "#adb5bd",
-        bleu: "#0d6efd",
-        rose: "#d63384"
+        vert: "#16a34a",
+        ambre: "#f59e0b",
+        rouge: "#dc2626",
+        gris: "#98a2b3",
+        bleu: "#2f5bea",
+        rose: "#d6409f"
     };
 
-    Chart.defaults.font.family = "Arial, sans-serif";
+    var police = getComputedStyle(document.body).fontFamily;
+
+    Chart.defaults.font.family = police;
     Chart.defaults.font.size = 12;
-    Chart.defaults.color = "#444";
+    Chart.defaults.color = "#475467";
     Chart.defaults.responsive = true;
     Chart.defaults.maintainAspectRatio = false;
     Chart.defaults.plugins.legend.labels.usePointStyle = true;
     Chart.defaults.plugins.legend.labels.boxWidth = 8;
 
-
-    // ------------------------------------------------------------
-    // Utilitaires
-    // ------------------------------------------------------------
-
+    // ---- Utilitaires ----
     function fmt(valeur, decimales) {
-        if (valeur === null || valeur === undefined) {
-            return "—";
-        }
+        if (valeur === null || valeur === undefined) { return "—"; }
         return Number(valeur).toLocaleString("fr-FR", {
             minimumFractionDigits: decimales,
             maximumFractionDigits: decimales
@@ -2140,7 +1450,6 @@
         return tableau.reduce(function (a, b) { return a + (b || 0); }, 0);
     }
 
-    // Vert à partir du seuil, rouge en dessous, gris si pas de valeur.
     function couleursSelonSeuil(valeurs) {
         return valeurs.map(function (v) {
             if (v === null || v === undefined) { return COULEUR.gris; }
@@ -2148,37 +1457,33 @@
         });
     }
 
-    function creer(idCanvas, configuration) {
+    function creer(idCanvas, configuration, description) {
         var canvas = document.getElementById(idCanvas);
         if (!canvas) { return null; }
+
+        // Alternative textuelle : les valeurs sont lisibles par un lecteur d'écran.
+        if (description) { canvas.setAttribute("aria-label", description); }
+
         try {
             return new Chart(canvas.getContext("2d"), configuration);
         } catch (erreur) {
-            // Un graphique en échec ne doit pas bloquer les autres.
             console.error("Graphique « " + idCanvas + " » : ", erreur);
             return null;
         }
     }
 
     function axeTitre(texte) {
-        return { display: true, text: texte, color: "#666" };
+        return { display: true, text: texte, color: "#667085" };
     }
 
-
-    // ------------------------------------------------------------
-    // Plugins maison
-    // ------------------------------------------------------------
-
-    // Trace une ligne pointillée au niveau du seuil (10/20).
+    // ---- Plugin : ligne pointillée au niveau du seuil ----
     Chart.register({
         id: "ligneSeuil",
         afterDatasetsDraw: function (chart, args, options) {
-
             if (!options || options.valeur === undefined) { return; }
 
             var echelle = chart.scales[options.axe || "y"];
             var zone = chart.chartArea;
-
             if (!echelle) { return; }
 
             var y = echelle.getPixelForValue(options.valeur);
@@ -2196,15 +1501,13 @@
         }
     });
 
-    // Affiche un texte au centre d'un graphique en anneau.
+    // ---- Plugin : texte au centre d'un anneau ----
     var pluginTexteCentre = {
         id: "texteCentre",
         afterDraw: function (chart, args, options) {
-
             if (!options || !options.texte) { return; }
 
             var meta = chart.getDatasetMeta(0);
-
             if (!meta || !meta.data.length) { return; }
 
             var x = meta.data[0].x;
@@ -2214,28 +1517,25 @@
             ctx.save();
             ctx.textAlign = "center";
             ctx.textBaseline = "middle";
-
-            ctx.fillStyle = "#222";
-            ctx.font = "bold 24px Arial, sans-serif";
+            ctx.fillStyle = "#1d2433";
+            ctx.font = "800 24px " + police;
             ctx.fillText(options.texte, x, y - 8);
-
-            ctx.fillStyle = "#666";
-            ctx.font = "12px Arial, sans-serif";
+            ctx.fillStyle = "#667085";
+            ctx.font = "12px " + police;
             ctx.fillText(options.sousTexte || "", x, y + 15);
-
             ctx.restore();
         }
     };
 
-
-    // ------------------------------------------------------------
-    // 1. Répartition des élèves par tranche de moyenne (anneau)
-    // ------------------------------------------------------------
-
+    // ---- 1. Répartition par tranche de moyenne (anneau) ----
     (function () {
-
         var T = D.tranches;
         var total = somme(T.valeurs);
+
+        var description = "Répartition des élèves par tranche de moyenne : " +
+            T.labels.map(function (l, i) { return l + " : " + T.valeurs[i]; }).join(", ") +
+            ". Taux de réussite : " +
+            (T.taux_reussite === null ? "non disponible" : fmt(T.taux_reussite, 1) + " %") + ".";
 
         creer("graphTranches", {
             type: "doughnut",
@@ -2244,9 +1544,7 @@
                 labels: T.labels,
                 datasets: [{
                     data: T.valeurs,
-                    backgroundColor: [
-                        COULEUR.vert, COULEUR.ambre, COULEUR.rouge, COULEUR.gris
-                    ],
+                    backgroundColor: [COULEUR.vert, COULEUR.ambre, COULEUR.rouge, COULEUR.gris],
                     borderColor: "#fff",
                     borderWidth: 2
                 }]
@@ -2256,9 +1554,7 @@
                 plugins: {
                     legend: { position: "bottom" },
                     texteCentre: {
-                        texte: T.taux_reussite === null
-                            ? "—"
-                            : fmt(T.taux_reussite, 1) + " %",
+                        texte: T.taux_reussite === null ? "—" : fmt(T.taux_reussite, 1) + " %",
                         sousTexte: "de réussite"
                     },
                     tooltip: {
@@ -2272,15 +1568,10 @@
                     }
                 }
             }
-        });
-
+        }, description);
     })();
 
-
-    // ------------------------------------------------------------
-    // 2. Moyenne par niveau
-    // ------------------------------------------------------------
-
+    // ---- 2. Moyenne par niveau ----
     creer("graphNiveauMoyenne", {
         type: "bar",
         data: {
@@ -2288,7 +1579,8 @@
             datasets: [{
                 label: "Moyenne",
                 data: D.niveaux.moyennes,
-                backgroundColor: couleursSelonSeuil(D.niveaux.moyennes)
+                backgroundColor: couleursSelonSeuil(D.niveaux.moyennes),
+                borderRadius: 4
             }]
         },
         options: {
@@ -2308,20 +1600,18 @@
                 y: { min: 0, max: 20, title: axeTitre("Moyenne (/20)") }
             }
         }
-    });
+    }, "Moyenne par niveau : " + D.niveaux.labels.map(function (l, i) {
+        return l + " : " + fmt(D.niveaux.moyennes[i], 2);
+    }).join(", ") + ". Seuil de réussite : " + D.seuil + " sur 20.");
 
-
-    // ------------------------------------------------------------
-    // 3. Filles et garçons par tranche de moyenne
-    // ------------------------------------------------------------
-
+    // ---- 3. Filles et garçons par tranche ----
     creer("graphGenre", {
         type: "bar",
         data: {
             labels: D.genre.labels,
             datasets: [
-                { label: "Filles", data: D.genre.filles, backgroundColor: COULEUR.rose },
-                { label: "Garçons", data: D.genre.garcons, backgroundColor: COULEUR.bleu }
+                { label: "Filles", data: D.genre.filles, backgroundColor: COULEUR.rose, borderRadius: 4 },
+                { label: "Garçons", data: D.genre.garcons, backgroundColor: COULEUR.bleu, borderRadius: 4 }
             ]
         },
         options: {
@@ -2340,12 +1630,11 @@
                 y: { beginAtZero: true, ticks: { precision: 0 }, title: axeTitre("Nombre d'élèves") }
             }
         }
-    });
-
+    }, "Filles et garçons par tranche de moyenne : " + D.genre.labels.map(function (l, i) {
+        return l + " : " + D.genre.filles[i] + " filles, " + D.genre.garcons[i] + " garçons";
+    }).join(" ; ") + ".");
 })();
-
 </script>
-
 
 
 <script>
@@ -2386,7 +1675,6 @@
         const xhr = new XMLHttpRequest();
         xhr.open('POST', form.action || window.location.href);
 
-        btn.disabled = true;
         reset();
         btn.disabled = true;
         box.classList.add('active');
@@ -2422,13 +1710,12 @@
         });
 
         xhr.addEventListener('error', function () {
-            showError('Erreur réseau pendant l\'import.');
+            showError("Erreur réseau pendant l'import.");
         });
 
         xhr.send(new FormData(form));
     });
 })();
 </script>
-
 
 {% endblock %}

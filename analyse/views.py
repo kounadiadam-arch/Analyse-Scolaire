@@ -2750,11 +2750,15 @@ def _donnees_fiche(eleve, annee_id=""):
         l["moyenne"] for l in lignes_trimestres if l["moyenne"] is not None
     ]
 
-    moyenne_annuelle = (
-        (sum(moyennes_valides) / len(moyennes_valides)).quantize(
-            Decimal("0.01")
-        )
-        if moyennes_valides else None
+    # Même formule que le bilan de fin d'année : T1 x 1, T2 x 2, T3 x 2.
+    # Tant que les trois trimestres ne sont pas classés, la moyenne est
+    # provisoire (calculée sur les trimestres disponibles).
+    moyenne_annuelle = _moyenne_ponderee({
+        l["trimestre"]: l["moyenne"] for l in lignes_trimestres
+    })
+
+    moyenne_annuelle_provisoire = (
+        len(moyennes_valides) < len(ORDRE_TRIMESTRES)
     )
 
     # Dernière évolution connue, pour le résumé en haut de page.
@@ -2807,6 +2811,7 @@ def _donnees_fiche(eleve, annee_id=""):
         "annee_choisie": annee_choisie,
         "lignes_trimestres": lignes_trimestres,
         "moyenne_annuelle": moyenne_annuelle,
+        "moyenne_annuelle_provisoire": moyenne_annuelle_provisoire,
         "derniere_evolution": derniere_evolution,
         "lignes_matieres": lignes_matieres,
         "matieres_a_renforcer": matieres_a_renforcer,
@@ -3017,7 +3022,9 @@ def _generer_pdf_fiche(eleve, donnees):
     evol = donnees["derniere_evolution"]
 
     cartes = [
-        ("Moyenne de l'année", _fmt(donnees["moyenne_annuelle"]) + " / 20"
+        ("Moyenne annuelle (provisoire)"
+         if donnees["moyenne_annuelle_provisoire"] else "Moyenne annuelle",
+         _fmt(donnees["moyenne_annuelle"]) + " / 20"
          if donnees["moyenne_annuelle"] is not None else "—"),
         (
             f"Rang au {donnees['dernier_trimestre']}",
@@ -3561,9 +3568,14 @@ def _construire_bilan(annee):
     return lignes, incomplets, noms_matieres
 
 
-def bilan_annuel(request):
-    """Bilan de fin d'année : moyennes annuelles par matière, moyenne
-    générale annuelle pondérée et décision de fin d'année."""
+def _donnees_bilan(parametres):
+    """Calcule le bilan de fin d'année en appliquant les filtres de la
+    page (année, niveau, classe, décision, recherche). Sert à la page,
+    à l'export Excel et à l'export PDF : les trois affichent donc
+    exactement les mêmes élèves.
+
+    Renvoie {"indisponible": True, ...} tant que les trois trimestres
+    ne sont pas enregistrés."""
 
     annees = annees_bilan_disponibles()
 
@@ -3588,23 +3600,20 @@ def bilan_annuel(request):
         }
 
     if not annees:
-        return render(request, "analyse/bilan_annuel.html", {
-            "indisponible": True,
-            "annee_en_attente": annee_en_attente,
-        })
+        return {"indisponible": True, "annee_en_attente": annee_en_attente}
 
     # ---- Filtres ----
 
-    annee_id = request.GET.get("annee", "")
+    annee_id = parametres.get("annee", "")
 
     annee = next(
         (a for a in annees if str(a.id) == annee_id), annees[0]
     )
 
-    niveau = request.GET.get("niveau", "")
-    classe_id = request.GET.get("classe", "")
-    decision_filtre = request.GET.get("decision", "")
-    recherche = request.GET.get("recherche", "").strip()
+    niveau = parametres.get("niveau", "")
+    classe_id = parametres.get("classe", "")
+    decision_filtre = parametres.get("decision", "")
+    recherche = parametres.get("recherche", "").strip()
 
     lignes, incomplets, noms_matieres = _construire_bilan(annee)
 
@@ -3676,12 +3685,7 @@ def bilan_annuel(request):
 
         lignes = [l for l in lignes if correspond(l["eleve"])]
 
-    page = Paginator(lignes, 50).get_page(request.GET.get("page"))
-
-    parametres = request.GET.copy()
-    parametres.pop("page", None)
-
-    return render(request, "analyse/bilan_annuel.html", {
+    return {
         "indisponible": False,
         "annee_en_attente": annee_en_attente,
         "annees": annees,
@@ -3692,14 +3696,1390 @@ def bilan_annuel(request):
         "classe_id": classe_id,
         "decision_filtre": decision_filtre,
         "recherche": recherche,
-        "decisions": DECISIONS,
-        "page": page,
-        "nombre_filtre": len(lignes),
+        "lignes": lignes,
+        "incomplets": incomplets,
         "noms_matieres": noms_matieres,
         "synthese": synthese,
         "pied": pied,
-        "incomplets": incomplets,
+    }
+
+
+def bilan_annuel(request):
+    """Bilan de fin d'année : moyennes annuelles par matière, moyenne
+    générale annuelle pondérée et décision de fin d'année."""
+
+    donnees = _donnees_bilan(request.GET)
+
+    if donnees["indisponible"]:
+        return render(request, "analyse/bilan_annuel.html", donnees)
+
+    page = Paginator(donnees["lignes"], 50).get_page(request.GET.get("page"))
+
+    parametres = request.GET.copy()
+    parametres.pop("page", None)
+
+    contexte = dict(donnees)
+    del contexte["lignes"]
+
+    contexte.update({
+        "decisions": DECISIONS,
+        "page": page,
+        "nombre_filtre": len(donnees["lignes"]),
         "querystring": parametres.urlencode(),
         "seuil_passage": SEUIL_PASSAGE,
         "seuil_redoublement": SEUIL_REDOUBLEMENT,
     })
+
+    return render(request, "analyse/bilan_annuel.html", contexte)
+
+
+# ---------------------------------------------------------------------
+# Exports du bilan (Excel et PDF), selon les filtres de la page
+# ---------------------------------------------------------------------
+
+def _libelle_filtres_bilan(donnees):
+    """Filtres actifs sous forme de phrases courtes, pour les en-têtes
+    des exports."""
+
+    parties = [f"Année scolaire {donnees['annee'].nom}"]
+
+    if donnees["niveau"]:
+        parties.append(f"Niveau {donnees['niveau']}")
+
+    if donnees["classe_id"]:
+        classe = next(
+            c for c in donnees["classes"]
+            if str(c.id) == donnees["classe_id"]
+        )
+        parties.append(f"Classe {classe.nom}")
+
+    if donnees["decision_filtre"]:
+        parties.append(
+            f"Décision : {DECISIONS[donnees['decision_filtre']]}"
+        )
+
+    if donnees["recherche"]:
+        parties.append(f"Recherche : « {donnees['recherche']} »")
+
+    return parties
+
+
+def _nom_fichier_bilan(donnees, extension):
+    morceaux = ["bilan_annuel", str(donnees["annee"].nom)]
+
+    if donnees["niveau"]:
+        morceaux.append(donnees["niveau"])
+
+    if donnees["classe_id"]:
+        morceaux.append(next(
+            c.nom for c in donnees["classes"]
+            if str(c.id) == donnees["classe_id"]
+        ))
+
+    nom = re.sub(
+        r"[^A-Za-z0-9_-]+", "_", _normaliser("_".join(morceaux))
+    ).strip("_")
+
+    return f"{nom}_{datetime.now():%Y%m%d_%H%M}.{extension}"
+
+
+def _construire_classeur_bilan(donnees):
+    """Classeur Excel du bilan : une feuille par élève (avec les
+    moyennes annuelles de chaque matière), une feuille de synthèse et,
+    s'il y en a, la liste des élèves sans bilan."""
+
+    classeur = Workbook()
+
+    # ---- Feuille 1 : bilan par élève ----
+
+    feuille = classeur.active
+    feuille.title = "Bilan annuel"
+
+    noms_matieres = donnees["noms_matieres"]
+
+    _ecrire_entetes(feuille, [
+        "Matricule", "Nom", "Prénoms", "Classe", "Niveau",
+        "Moyenne T1", "Moyenne T2", "Moyenne T3",
+        "Moyenne annuelle", "Rang", "Effectif classe", "Décision",
+    ] + noms_matieres)
+
+    feuille.freeze_panes = "D2"
+
+    for numero, ligne in enumerate(donnees["lignes"], start=2):
+
+        valeurs = [
+            ligne["eleve"].matricule,
+            ligne["eleve"].nom,
+            ligne["eleve"].prenoms,
+            ligne["classe"].nom,
+            ligne["classe"].niveau,
+        ]
+        valeurs += [float(m) for m in ligne["moyennes"]]
+        valeurs += [
+            float(ligne["moyenne_annuelle"]),
+            ligne["rang"],
+            ligne["effectif"],
+            DECISIONS[ligne["decision"]],
+        ]
+        valeurs += [
+            float(m) if m is not None else None for m in ligne["matieres"]
+        ]
+
+        for colonne, valeur in enumerate(valeurs, start=1):
+            cellule = feuille.cell(row=numero, column=colonne, value=valeur)
+
+            if isinstance(valeur, float):
+                cellule.number_format = "0.00"
+
+            if colonne >= 6:
+                cellule.alignment = ALIGNEMENT_CENTRE
+
+        feuille.cell(row=numero, column=9).font = Font(bold=True, name="Arial")
+
+    _ajuster_largeurs_colonnes(feuille)
+
+    # ---- Feuille 2 : synthèse ----
+
+    synthese = donnees["synthese"]
+    resume = classeur.create_sheet("Synthèse")
+
+    ligne_excel = 1
+
+    for texte in _libelle_filtres_bilan(donnees):
+        resume.cell(row=ligne_excel, column=1, value=texte)
+        ligne_excel += 1
+
+    ligne_excel += 1
+
+    resume.cell(
+        row=ligne_excel, column=1,
+        value="Synthèse sur le niveau ou la classe choisi(e), "
+              "avant les filtres Décision et Recherche",
+    ).font = Font(italic=True, name="Arial")
+    ligne_excel += 2
+
+    for colonne, texte in enumerate(["Indicateur", "Effectif", "Part"], 1):
+        _cellule_entete_sombre(resume, ligne_excel, colonne, texte)
+
+    lignes_synthese = [
+        ("Élèves avec bilan complet", synthese["total"], None),
+        (DECISIONS["passe"], synthese["passe"], synthese["passe_pct"]),
+        (DECISIONS["redouble"], synthese["redouble"],
+         synthese["redouble_pct"]),
+        (DECISIONS["exclu"], synthese["exclu"], synthese["exclu_pct"]),
+        ("Élèves sans bilan (trimestre manquant)",
+         synthese["incomplets"], None),
+    ]
+
+    for libelle, effectif, pourcentage in lignes_synthese:
+        ligne_excel += 1
+
+        for colonne, valeur in enumerate(
+            [libelle, effectif, pourcentage], start=1
+        ):
+            cellule = resume.cell(
+                row=ligne_excel, column=colonne,
+                value=(valeur / 100 if colonne == 3 and valeur is not None
+                       else valeur),
+            )
+            cellule.border = BORDURE_FINE
+
+            if colonne == 3 and valeur is not None:
+                cellule.number_format = "0.0%"
+            if colonne > 1:
+                cellule.alignment = ALIGNEMENT_CENTRE
+
+    moyenne = donnees["pied"]["moyenne_annuelle"]
+
+    if moyenne is not None:
+        ligne_excel += 2
+        resume.cell(row=ligne_excel, column=1,
+                    value="Moyenne générale annuelle").font = Font(
+            bold=True, name="Arial")
+        cellule = resume.cell(row=ligne_excel, column=2, value=float(moyenne))
+        cellule.number_format = "0.00"
+        cellule.alignment = ALIGNEMENT_CENTRE
+
+    ligne_excel += 2
+    regles = [
+        "Règles de calcul",
+        "Moyenne générale annuelle = (T1 x 1 + T2 x 2 + T3 x 2) / 5",
+        "Moyenne annuelle d'une matière = (T1 + T2 + T3) / 3",
+        f"Moyenne >= {SEUIL_PASSAGE} : {DECISIONS['passe']}",
+        f"Moyenne de {SEUIL_REDOUBLEMENT} à 9,99 : {DECISIONS['redouble']}",
+        f"Moyenne < {SEUIL_REDOUBLEMENT} : {DECISIONS['exclu']}",
+    ]
+    for indice, texte in enumerate(regles):
+        cellule = resume.cell(row=ligne_excel + indice, column=1, value=texte)
+        if indice == 0:
+            cellule.font = Font(bold=True, name="Arial")
+
+    resume.column_dimensions["A"].width = 52
+    resume.column_dimensions["B"].width = 12
+    resume.column_dimensions["C"].width = 10
+
+    # ---- Feuille 3 : élèves sans bilan ----
+
+    if donnees["incomplets"]:
+        sans_bilan = classeur.create_sheet("Sans bilan")
+
+        _ecrire_entetes(sans_bilan, [
+            "Matricule", "Nom", "Prénoms", "Classe", "Trimestres manquants",
+        ])
+
+        for numero, item in enumerate(donnees["incomplets"], start=2):
+            for colonne, valeur in enumerate([
+                item["eleve"].matricule,
+                item["eleve"].nom,
+                item["eleve"].prenoms,
+                item["classe"].nom,
+                ", ".join(item["manquants"]),
+            ], start=1):
+                sans_bilan.cell(row=numero, column=colonne, value=valeur)
+
+        _ajuster_largeurs_colonnes(sans_bilan)
+
+    tampon = io.BytesIO()
+    classeur.save(tampon)
+
+    return tampon.getvalue()
+
+
+def _generer_pdf_bilan(donnees):
+    """PDF du bilan (format paysage) : synthèse puis liste des élèves
+    avec moyennes trimestrielles, moyenne annuelle, rang et décision.
+    Les moyennes par matière figurent dans l'export Excel."""
+
+    from xml.sax.saxutils import escape
+
+    from reportlab.lib import colors
+    from reportlab.lib.pagesizes import A4, landscape
+    from reportlab.lib.styles import ParagraphStyle
+    from reportlab.lib.units import cm
+    from reportlab.platypus import (
+        Paragraph,
+        SimpleDocTemplate,
+        Spacer,
+        Table,
+        TableStyle,
+    )
+
+    ACCENT = colors.HexColor("#2f5bea")
+    GRIS = colors.HexColor("#667085")
+    FOND = colors.HexColor("#eef1f6")
+    LIGNE = colors.HexColor("#e4e7ec")
+
+    COULEURS_DECISION = {
+        "passe": "#0b6b2f",
+        "redouble": "#b54708",
+        "exclu": "#b42318",
+    }
+
+    base = ParagraphStyle(
+        "base", fontName="Helvetica", fontSize=9, leading=12,
+        textColor=colors.HexColor("#1d2433"),
+    )
+    centre = ParagraphStyle("centre", parent=base, alignment=1)
+    petit = ParagraphStyle(
+        "petit", parent=base, fontSize=8.5, leading=11, textColor=GRIS,
+    )
+
+    def p(texte, style=base):
+        return Paragraph(texte, style)
+
+    def nombre(valeur):
+        return f"{valeur:.2f}".replace(".", ",")
+
+    def moyenne_texte(valeur, gras=False):
+        couleur = "#b42318" if valeur < SEUIL_PASSAGE else "#1d2433"
+        texte = nombre(valeur)
+        if gras:
+            texte = f"<b>{texte}</b>"
+        return f'<font color="{couleur}">{texte}</font>'
+
+    synthese = donnees["synthese"]
+    moyenne = donnees["pied"]["moyenne_annuelle"]
+
+    contenu = [
+        p("BILAN DE FIN D'ANNÉE", ParagraphStyle(
+            "sur", parent=petit, fontName="Helvetica-Bold",
+            textColor=ACCENT)),
+        p(f"Année scolaire {escape(str(donnees['annee'].nom))}",
+          ParagraphStyle("titre", parent=base, fontName="Helvetica-Bold",
+                         fontSize=18, leading=22)),
+        Spacer(1, 3),
+        p(" &nbsp;·&nbsp; ".join(
+            escape(x) for x in _libelle_filtres_bilan(donnees)[1:]
+        ) or "Tous les niveaux et toutes les classes", petit),
+        Spacer(1, 10),
+    ]
+
+    # ---- Synthèse ----
+
+    cartes = [
+        ("Élèves avec bilan complet", str(synthese["total"])),
+        (DECISIONS["passe"],
+         f"{synthese['passe']}  ({synthese['passe_pct']:.1f} %)".replace(
+             ".", ",")),
+        (DECISIONS["redouble"],
+         f"{synthese['redouble']}  ({synthese['redouble_pct']:.1f} %)"
+         .replace(".", ",")),
+        (DECISIONS["exclu"],
+         f"{synthese['exclu']}  ({synthese['exclu_pct']:.1f} %)".replace(
+             ".", ",")),
+        ("Moyenne générale annuelle",
+         nombre(moyenne) if moyenne is not None else "—"),
+    ]
+
+    resume = Table(
+        [[
+            [p(f'<font color="#667085" size="8">{escape(lib)}</font>'),
+             p(f"<b>{escape(val)}</b>", ParagraphStyle(
+                 "val", parent=base, fontSize=12, leading=15))]
+            for lib, val in cartes
+        ]],
+        colWidths=[5.2 * cm] * 5,
+    )
+    resume.setStyle(TableStyle([
+        ("BOX", (0, 0), (-1, -1), 0.5, LIGNE),
+        ("INNERGRID", (0, 0), (-1, -1), 0.5, LIGNE),
+        ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#f8f9fb")),
+        ("VALIGN", (0, 0), (-1, -1), "TOP"),
+        ("TOPPADDING", (0, 0), (-1, -1), 7),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 7),
+        ("LEFTPADDING", (0, 0), (-1, -1), 9),
+    ]))
+    contenu.append(resume)
+    contenu.append(Spacer(1, 4))
+    contenu.append(p(
+        "Moyenne annuelle = (T1 × 1 + T2 × 2 + T3 × 2) ÷ 5. "
+        f"Passage à partir de {SEUIL_PASSAGE} ; de "
+        f"{str(SEUIL_REDOUBLEMENT).replace('.', ',')} à 9,99 : reprend la "
+        f"classe ; en dessous de {str(SEUIL_REDOUBLEMENT).replace('.', ',')} "
+        ": exclu.", petit,
+    ))
+    contenu.append(Spacer(1, 12))
+
+    # ---- Liste des élèves ----
+
+    def entete(texte, style=base):
+        return p(f"<b>{texte}</b>", ParagraphStyle(
+            "th", parent=style, fontSize=8.5, textColor=GRIS))
+
+    lignes = [[
+        entete("N°", centre), entete("Élève"), entete("Classe"),
+        entete("T1", centre), entete("T2", centre), entete("T3", centre),
+        entete("Moy. annuelle", centre), entete("Rang", centre),
+        entete("Décision"),
+    ]]
+
+    for numero, ligne in enumerate(donnees["lignes"], start=1):
+        rang = "1er" if ligne["rang"] == 1 else f"{ligne['rang']}e"
+
+        lignes.append([
+            p(str(numero), centre),
+            p(f"<b>{escape(ligne['eleve'].nom)}</b> "
+              f"{escape(ligne['eleve'].prenoms)}"),
+            p(escape(ligne["classe"].nom)),
+            *[p(moyenne_texte(m), centre) for m in ligne["moyennes"]],
+            p(moyenne_texte(ligne["moyenne_annuelle"], gras=True), centre),
+            p(f'{rang} <font color="#667085" size="8">'
+              f'/ {ligne["effectif"]}</font>', centre),
+            p(f'<font color="{COULEURS_DECISION[ligne["decision"]]}">'
+              f'<b>{escape(DECISIONS[ligne["decision"]])}</b></font>'),
+        ])
+
+    if len(lignes) == 1:
+        contenu.append(p("Aucun élève ne correspond à ces filtres."))
+    else:
+        facteur = 26.0 / 26.6
+        largeurs = [1.1, 6.8, 2.6, 2.0, 2.0, 2.0, 2.6, 2.6, 4.9]
+
+        tableau = Table(
+            lignes, repeatRows=1,
+            colWidths=[l * cm * facteur for l in largeurs],
+        )
+        tableau.setStyle(TableStyle([
+            ("BACKGROUND", (0, 0), (-1, 0), FOND),
+            ("LINEBELOW", (0, 0), (-1, -1), 0.5, LIGNE),
+            ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+            ("TOPPADDING", (0, 0), (-1, -1), 4),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
+            ("LEFTPADDING", (0, 0), (-1, -1), 6),
+            ("RIGHTPADDING", (0, 0), (-1, -1), 6),
+        ]))
+        contenu.append(tableau)
+
+    if donnees["incomplets"]:
+        contenu.append(Spacer(1, 8))
+        contenu.append(p(
+            f"{len(donnees['incomplets'])} élève(s) sans bilan : "
+            "au moins un trimestre manque (liste dans l'export Excel).",
+            petit,
+        ))
+
+    contenu.append(Spacer(1, 4))
+    contenu.append(p(
+        "Les moyennes annuelles par matière figurent dans l'export Excel.",
+        petit,
+    ))
+
+    def pied_de_page(canvas, doc):
+        largeur, _ = landscape(A4)
+        canvas.saveState()
+        canvas.setStrokeColor(LIGNE)
+        canvas.line(1.5 * cm, 1.4 * cm, largeur - 1.5 * cm, 1.4 * cm)
+        canvas.setFont("Helvetica", 8)
+        canvas.setFillColor(GRIS)
+        canvas.drawString(
+            1.5 * cm, 0.9 * cm,
+            f"Analyse scolaire — bilan {donnees['annee'].nom} — "
+            f"généré le {datetime.now():%d/%m/%Y}",
+        )
+        canvas.drawRightString(largeur - 1.5 * cm, 0.9 * cm,
+                               f"Page {doc.page}")
+        canvas.restoreState()
+
+    tampon = io.BytesIO()
+
+    document = SimpleDocTemplate(
+        tampon, pagesize=landscape(A4),
+        leftMargin=1.5 * cm, rightMargin=1.5 * cm,
+        topMargin=1.5 * cm, bottomMargin=2 * cm,
+        title=f"Bilan de fin d'année {donnees['annee'].nom}",
+        author="Analyse scolaire",
+    )
+    document.build(
+        contenu, onFirstPage=pied_de_page, onLaterPages=pied_de_page,
+    )
+
+    return tampon.getvalue()
+
+
+def exporter_bilan_annuel_excel(request):
+    """Télécharge le bilan de fin d'année en Excel, avec les mêmes
+    filtres que la page."""
+
+    donnees = _donnees_bilan(request.GET)
+
+    if donnees["indisponible"]:
+        return redirect("bilan_annuel")
+
+    reponse = HttpResponse(
+        _construire_classeur_bilan(donnees),
+        content_type=(
+            "application/vnd.openxmlformats-officedocument"
+            ".spreadsheetml.sheet"
+        ),
+    )
+    reponse["Content-Disposition"] = (
+        f'attachment; filename="{_nom_fichier_bilan(donnees, "xlsx")}"'
+    )
+
+    return reponse
+
+
+def exporter_bilan_annuel_pdf(request):
+    """Télécharge le bilan de fin d'année en PDF, avec les mêmes
+    filtres que la page."""
+
+    donnees = _donnees_bilan(request.GET)
+
+    if donnees["indisponible"]:
+        return redirect("bilan_annuel")
+
+    try:
+        pdf = _generer_pdf_bilan(donnees)
+    except ImportError:
+        return HttpResponse(
+            "La bibliothèque reportlab n'est pas installée. "
+            "Installez-la avec : pip install reportlab",
+            status=501,
+            content_type="text/plain; charset=utf-8",
+        )
+
+    reponse = HttpResponse(pdf, content_type="application/pdf")
+    reponse["Content-Disposition"] = (
+        f'attachment; filename="{_nom_fichier_bilan(donnees, "pdf")}"'
+    )
+
+    return reponse
+
+
+# =====================================================================
+# BILAN DE FIN DE TRIMESTRE
+# =====================================================================
+#
+# Pour une année et un trimestre : moyenne de chaque élève classé, rang,
+# évolution par rapport au trimestre précédent, situation d'après la
+# moyenne, synthèse par classe et moyennes par matière (bouton « Voir »).
+# Les élèves sans moyenne (0 ou absente) sont comptés « non classés ».
+#
+# Les trois situations reprennent les tranches du tableau « Statistiques » :
+#   - 10 ou plus ; de 8,50 à moins de 10 ; moins de 8,50.
+
+SITUATIONS = {
+    "reussite": "Moyenne de 10 ou plus",
+    "surveiller": "De 8,50 à moins de 10",
+    "difficulte": "Moins de 8,50",
+}
+
+
+def _situation_moyenne(moyenne):
+    if moyenne >= SEUIL_PASSAGE:
+        return "reussite"
+
+    if moyenne >= SEUIL_REDOUBLEMENT:
+        return "surveiller"
+
+    return "difficulte"
+
+
+def _attacher_evolution_par_lots(resultats, taille=400):
+    """Comme _attacher_evolution, mais par lots : évite les requêtes
+    trop volumineuses quand on traite tout un établissement."""
+
+    resultats = list(resultats)
+
+    for debut in range(0, len(resultats), taille):
+        _attacher_evolution(resultats[debut:debut + taille])
+
+
+def _annees_bilan_trimestre():
+    """Années scolaires ayant au moins une moyenne trimestrielle,
+    de la plus récente à la plus ancienne."""
+
+    ids = set(
+        Resultat.objects
+        .filter(moyenne_trimestrielle__gt=0)
+        .values_list("annee_scolaire_id", flat=True)
+        .distinct()
+    )
+
+    if not ids:
+        return []
+
+    return list(AnneeScolaire.objects.filter(id__in=ids).order_by("-nom"))
+
+
+def _construire_bilan_trimestre(annee, trimestre):
+    """Renvoie (lignes, non_classes, noms_matieres) pour une année et
+    un trimestre :
+      - lignes : élèves classés (moyenne > 0), avec rang, évolution,
+        situation, performance et détail des matières ;
+      - non_classes : élèves de la période sans moyenne ;
+      - noms_matieres : matières ayant au moins une note."""
+
+    resultats = list(
+        Resultat.objects
+        .filter(annee_scolaire=annee, trimestre=trimestre)
+        .select_related("eleve", "classe")
+    )
+
+    classes_effectifs = {}
+    for resultat in resultats:
+        classes_effectifs[resultat.classe_id] = (
+            classes_effectifs.get(resultat.classe_id, 0) + 1
+        )
+
+    classes_resultats = [r for r in resultats if _moyenne_classee(r) is not None]
+    non_classes = [
+        {"eleve": r.eleve, "classe": r.classe}
+        for r in resultats if _moyenne_classee(r) is None
+    ]
+
+    for resultat in classes_resultats:
+        _attacher_details_matieres(resultat)
+        _definir_performance(resultat)
+
+    _attacher_evolution_par_lots(classes_resultats)
+
+    lignes = []
+
+    for resultat in classes_resultats:
+        moyenne = _moyenne_classee(resultat)
+
+        lignes.append({
+            "eleve": resultat.eleve,
+            "classe": resultat.classe,
+            "moyenne": moyenne,
+            "rang": _rang_entier(resultat.rang),
+            "effectif": classes_effectifs[resultat.classe_id],
+            "situation": _situation_moyenne(moyenne),
+            "situation_libelle": SITUATIONS[_situation_moyenne(moyenne)],
+            "evolution": resultat.evolution,
+            "evolution_sens": resultat.evolution_sens,
+            "evolution_ref": resultat.evolution_ref,
+            "evolution_precedente": resultat.evolution_precedente,
+            "performance": resultat.performance,
+            "performance_css": resultat.performance_css,
+            "details_matieres": resultat.details_matieres,
+        })
+
+    # Rang manquant dans le fichier : on le calcule dans la classe
+    # (ex æquo : même rang).
+    par_classe = {}
+    for ligne in lignes:
+        par_classe.setdefault(ligne["classe"].id, []).append(ligne)
+
+    for groupe in par_classe.values():
+        groupe.sort(key=lambda l: l["moyenne"], reverse=True)
+
+        rang = 0
+        precedente = None
+
+        for position, ligne in enumerate(groupe, start=1):
+            if ligne["moyenne"] != precedente:
+                rang = position
+                precedente = ligne["moyenne"]
+
+            if ligne["rang"] is None:
+                ligne["rang"] = rang
+
+    noms_matieres = [
+        nom for nom in MATIERES
+        if any(
+            any(d["nom"] == nom for d in l["details_matieres"])
+            for l in lignes
+        )
+    ]
+
+    lignes.sort(key=lambda l: (l["classe"].nom, l["rang"] or 9999, -l["moyenne"]))
+
+    return lignes, non_classes, noms_matieres
+
+
+def _synthese_bilan_trimestre(lignes, non_classes):
+    total = len(lignes)
+
+    synthese = {"total": total, "non_classes": len(non_classes)}
+
+    for code in SITUATIONS:
+        nombre = sum(1 for l in lignes if l["situation"] == code)
+        synthese[code] = nombre
+        synthese[f"{code}_pct"] = round(nombre / total * 100, 1) if total else 0
+
+    moyennes = [l["moyenne"] for l in lignes]
+
+    synthese["moyenne_generale"] = _moyenne_simple(moyennes)
+    synthese["meilleure"] = max(moyennes) if moyennes else None
+    synthese["plus_faible"] = min(moyennes) if moyennes else None
+
+    return synthese
+
+
+def _synthese_par_classe(lignes):
+    """Une ligne par classe : effectif classé, moyenne, taux de réussite,
+    meilleure et plus faible moyenne."""
+
+    groupes = {}
+    for ligne in lignes:
+        groupes.setdefault(ligne["classe"].id, []).append(ligne)
+
+    resultat = []
+
+    for groupe in groupes.values():
+        moyennes = [l["moyenne"] for l in groupe]
+        reussis = sum(1 for m in moyennes if m >= SEUIL_PASSAGE)
+        premier = max(groupe, key=lambda l: l["moyenne"])
+        dernier = min(groupe, key=lambda l: l["moyenne"])
+
+        resultat.append({
+            "classe": groupe[0]["classe"],
+            "effectif": len(groupe),
+            "moyenne": _moyenne_simple(moyennes),
+            "taux_reussite": round(reussis / len(groupe) * 100, 1),
+            "meilleur": premier,
+            "plus_faible": dernier,
+        })
+
+    resultat.sort(key=lambda g: g["classe"].nom)
+
+    return resultat
+
+
+def _donnees_bilan_trimestre(parametres):
+    """Calcule le bilan de fin de trimestre en appliquant les filtres de
+    la page (année, trimestre, niveau, classe, situation, recherche).
+    Sert à la page et aux exports Excel et PDF."""
+
+    annees = _annees_bilan_trimestre()
+
+    if not annees:
+        return {"indisponible": True}
+
+    # ---- Année et trimestre ----
+
+    annee_id = parametres.get("annee", "")
+    annee = next((a for a in annees if str(a.id) == annee_id), annees[0])
+
+    presents = set(
+        Resultat.objects
+        .filter(annee_scolaire=annee, moyenne_trimestrielle__gt=0)
+        .values_list("trimestre", flat=True)
+    )
+
+    trimestres = [t for t in ORDRE_TRIMESTRES if t in presents]
+
+    trimestre = parametres.get("trimestre", "")
+    if trimestre not in trimestres:
+        trimestre = trimestres[-1]
+
+    lignes, non_classes, noms_matieres = _construire_bilan_trimestre(
+        annee, trimestre
+    )
+
+    # ---- Niveaux et classes ----
+
+    niveau = parametres.get("niveau", "")
+    classe_id = parametres.get("classe", "")
+    situation_filtre = parametres.get("situation", "")
+    recherche = parametres.get("recherche", "").strip()
+
+    def niveau_de(classe):
+        return classe.niveau or "Non renseigné"
+
+    tous = lignes + non_classes
+
+    niveaux = sorted(
+        {niveau_de(x["classe"]) for x in tous},
+        key=lambda n: _info_tri_niveau(n)[1],
+    )
+
+    if niveau in niveaux:
+        lignes = [l for l in lignes if niveau_de(l["classe"]) == niveau]
+        non_classes = [
+            n for n in non_classes if niveau_de(n["classe"]) == niveau
+        ]
+    else:
+        niveau = ""
+
+    classes = sorted(
+        {x["classe"].id: x["classe"] for x in lignes + non_classes}.values(),
+        key=lambda c: c.nom,
+    )
+
+    if classe_id.isdigit() and int(classe_id) in [c.id for c in classes]:
+        classe_int = int(classe_id)
+        lignes = [l for l in lignes if l["classe"].id == classe_int]
+        non_classes = [n for n in non_classes if n["classe"].id == classe_int]
+    else:
+        classe_id = ""
+
+    # ---- Synthèses (sur le niveau ou la classe choisi) ----
+
+    synthese = _synthese_bilan_trimestre(lignes, non_classes)
+    par_classe = _synthese_par_classe(lignes)
+
+    # ---- Filtres d'affichage ----
+
+    if situation_filtre in SITUATIONS:
+        lignes = [l for l in lignes if l["situation"] == situation_filtre]
+    else:
+        situation_filtre = ""
+
+    if recherche:
+        mots = [_normaliser(m) for m in recherche.split()]
+
+        def correspond(eleve):
+            texte = _normaliser(
+                f"{eleve.nom} {eleve.prenoms} {eleve.matricule}"
+            )
+            return all(mot in texte for mot in mots)
+
+        lignes = [l for l in lignes if correspond(l["eleve"])]
+
+    return {
+        "indisponible": False,
+        "annees": annees,
+        "annee": annee,
+        "trimestres": [
+            {"code": t, "libelle": TRIMESTRE_LABELS[t]} for t in trimestres
+        ],
+        "trimestre": trimestre,
+        "trimestre_libelle": TRIMESTRE_LABELS[trimestre],
+        "niveaux": niveaux,
+        "niveau": niveau,
+        "classes": classes,
+        "classe_id": classe_id,
+        "situation_filtre": situation_filtre,
+        "recherche": recherche,
+        "lignes": lignes,
+        "non_classes": non_classes,
+        "noms_matieres": noms_matieres,
+        "synthese": synthese,
+        "par_classe": par_classe,
+    }
+
+
+def bilan_trimestre(request):
+    """Bilan de fin de trimestre : moyennes, rangs, évolution, situation
+    et synthèse par classe."""
+
+    donnees = _donnees_bilan_trimestre(request.GET)
+
+    if donnees["indisponible"]:
+        return render(request, "analyse/bilan_trimestre.html", donnees)
+
+    page = Paginator(donnees["lignes"], 50).get_page(request.GET.get("page"))
+
+    parametres = request.GET.copy()
+    parametres.pop("page", None)
+
+    contexte = dict(donnees)
+    del contexte["lignes"]
+
+    contexte.update({
+        "situations": SITUATIONS,
+        "page": page,
+        "nombre_filtre": len(donnees["lignes"]),
+        "querystring": parametres.urlencode(),
+        "seuil_passage": SEUIL_PASSAGE,
+        "seuil_redoublement": SEUIL_REDOUBLEMENT,
+    })
+
+    return render(request, "analyse/bilan_trimestre.html", contexte)
+
+
+# ---------------------------------------------------------------------
+# Exports du bilan de trimestre (Excel et PDF), selon les filtres
+# ---------------------------------------------------------------------
+
+def _libelle_filtres_bilan_trimestre(donnees):
+    parties = [
+        f"Année scolaire {donnees['annee'].nom}",
+        donnees["trimestre_libelle"],
+    ]
+
+    if donnees["niveau"]:
+        parties.append(f"Niveau {donnees['niveau']}")
+
+    if donnees["classe_id"]:
+        classe = next(
+            c for c in donnees["classes"]
+            if str(c.id) == donnees["classe_id"]
+        )
+        parties.append(f"Classe {classe.nom}")
+
+    if donnees["situation_filtre"]:
+        parties.append(f"Moyenne : {SITUATIONS[donnees['situation_filtre']]}")
+
+    if donnees["recherche"]:
+        parties.append(f"Recherche : « {donnees['recherche']} »")
+
+    return parties
+
+
+def _nom_fichier_bilan_trimestre(donnees, extension):
+    morceaux = [
+        "bilan", donnees["trimestre"], str(donnees["annee"].nom),
+    ]
+
+    if donnees["niveau"]:
+        morceaux.append(donnees["niveau"])
+
+    if donnees["classe_id"]:
+        morceaux.append(next(
+            c.nom for c in donnees["classes"]
+            if str(c.id) == donnees["classe_id"]
+        ))
+
+    nom = re.sub(
+        r"[^A-Za-z0-9_-]+", "_", _normaliser("_".join(morceaux))
+    ).strip("_")
+
+    return f"{nom}_{datetime.now():%Y%m%d_%H%M}.{extension}"
+
+
+def _construire_classeur_bilan_trimestre(donnees):
+    """Classeur Excel : bilan par élève (avec les moyennes par matière),
+    synthèse par classe, synthèse générale et élèves non classés."""
+
+    classeur = Workbook()
+
+    # ---- Feuille 1 : bilan par élève ----
+    # Colonnes : identité, moyennes par matière, puis la moyenne
+    # trimestrielle et le rang. Élèves classés par ordre alphabétique.
+
+    feuille = classeur.active
+    feuille.title = "Bilan trimestre"
+
+    noms_matieres = donnees["noms_matieres"]
+
+    _ecrire_entetes(feuille, [
+        "Matricule", "Nom", "Prénoms", "Classe", "Niveau",
+    ] + noms_matieres + ["Moyenne trimestrielle", "Rang"])
+
+    feuille.freeze_panes = "D2"
+
+    colonne_moyenne = 5 + len(noms_matieres) + 1
+
+    eleves_alphabetiques = sorted(
+        donnees["lignes"],
+        key=lambda l: (
+            _normaliser(l["eleve"].nom),
+            _normaliser(l["eleve"].prenoms),
+        ),
+    )
+
+    for numero, ligne in enumerate(eleves_alphabetiques, start=2):
+
+        notes = {d["nom"]: d["note"] for d in ligne["details_matieres"]}
+
+        valeurs = [
+            ligne["eleve"].matricule,
+            ligne["eleve"].nom,
+            ligne["eleve"].prenoms,
+            ligne["classe"].nom,
+            ligne["classe"].niveau,
+        ]
+        valeurs += [
+            float(notes[nom]) if notes.get(nom) is not None else None
+            for nom in noms_matieres
+        ]
+        valeurs += [float(ligne["moyenne"]), ligne["rang"]]
+
+        for colonne, valeur in enumerate(valeurs, start=1):
+            cellule = feuille.cell(row=numero, column=colonne, value=valeur)
+
+            if isinstance(valeur, float):
+                cellule.number_format = "0.00"
+
+            if colonne >= 6:
+                cellule.alignment = ALIGNEMENT_CENTRE
+
+        feuille.cell(
+            row=numero, column=colonne_moyenne
+        ).font = Font(bold=True, name="Arial")
+
+    _ajuster_largeurs_colonnes(feuille)
+
+    # ---- Feuille 2 : synthèse par classe ----
+
+    par_classe = classeur.create_sheet("Synthèse par classe")
+
+    _ecrire_entetes(par_classe, [
+        "Classe", "Niveau", "Effectif classé", "Moyenne de la classe",
+        "Taux de réussite", "Meilleure moyenne", "Élève (meilleure)",
+        "Plus faible moyenne", "Élève (plus faible)",
+    ])
+
+    for numero, g in enumerate(donnees["par_classe"], start=2):
+        valeurs = [
+            g["classe"].nom,
+            g["classe"].niveau,
+            g["effectif"],
+            float(g["moyenne"]),
+            g["taux_reussite"] / 100,
+            float(g["meilleur"]["moyenne"]),
+            f"{g['meilleur']['eleve'].nom} {g['meilleur']['eleve'].prenoms}",
+            float(g["plus_faible"]["moyenne"]),
+            f"{g['plus_faible']['eleve'].nom} {g['plus_faible']['eleve'].prenoms}",
+        ]
+
+        for colonne, valeur in enumerate(valeurs, start=1):
+            cellule = par_classe.cell(row=numero, column=colonne, value=valeur)
+
+            if colonne in (4, 6, 8):
+                cellule.number_format = "0.00"
+            if colonne == 5:
+                cellule.number_format = "0.0%"
+            if colonne >= 3 and colonne not in (7, 9):
+                cellule.alignment = ALIGNEMENT_CENTRE
+
+    _ajuster_largeurs_colonnes(par_classe)
+
+    # ---- Feuille 3 : synthèse générale ----
+
+    synthese = donnees["synthese"]
+    resume = classeur.create_sheet("Synthèse")
+
+    ligne_excel = 1
+
+    for texte in _libelle_filtres_bilan_trimestre(donnees):
+        resume.cell(row=ligne_excel, column=1, value=texte)
+        ligne_excel += 1
+
+    ligne_excel += 1
+
+    resume.cell(
+        row=ligne_excel, column=1,
+        value="Synthèse sur le niveau ou la classe choisi(e), "
+              "avant les filtres Moyenne et Recherche",
+    ).font = Font(italic=True, name="Arial")
+    ligne_excel += 2
+
+    for colonne, texte in enumerate(["Indicateur", "Effectif", "Part"], 1):
+        _cellule_entete_sombre(resume, ligne_excel, colonne, texte)
+
+    lignes_synthese = [
+        ("Élèves classés", synthese["total"], None),
+        (SITUATIONS["reussite"], synthese["reussite"], synthese["reussite_pct"]),
+        (SITUATIONS["surveiller"], synthese["surveiller"],
+         synthese["surveiller_pct"]),
+        (SITUATIONS["difficulte"], synthese["difficulte"],
+         synthese["difficulte_pct"]),
+        ("Élèves non classés", synthese["non_classes"], None),
+    ]
+
+    for libelle, effectif, pourcentage in lignes_synthese:
+        ligne_excel += 1
+
+        for colonne, valeur in enumerate(
+            [libelle, effectif, pourcentage], start=1
+        ):
+            cellule = resume.cell(
+                row=ligne_excel, column=colonne,
+                value=(valeur / 100 if colonne == 3 and valeur is not None
+                       else valeur),
+            )
+            cellule.border = BORDURE_FINE
+
+            if colonne == 3 and valeur is not None:
+                cellule.number_format = "0.0%"
+            if colonne > 1:
+                cellule.alignment = ALIGNEMENT_CENTRE
+
+    ligne_excel += 2
+
+    for libelle, valeur in [
+        ("Moyenne générale", synthese["moyenne_generale"]),
+        ("Meilleure moyenne", synthese["meilleure"]),
+        ("Plus faible moyenne", synthese["plus_faible"]),
+    ]:
+        if valeur is None:
+            continue
+
+        resume.cell(row=ligne_excel, column=1, value=libelle).font = Font(
+            bold=True, name="Arial")
+        cellule = resume.cell(row=ligne_excel, column=2, value=float(valeur))
+        cellule.number_format = "0.00"
+        cellule.alignment = ALIGNEMENT_CENTRE
+        ligne_excel += 1
+
+    resume.column_dimensions["A"].width = 44
+    resume.column_dimensions["B"].width = 12
+    resume.column_dimensions["C"].width = 10
+
+    # ---- Feuille 4 : non classés ----
+
+    if donnees["non_classes"]:
+        feuille_nc = classeur.create_sheet("Non classés")
+
+        _ecrire_entetes(feuille_nc, ["Matricule", "Nom", "Prénoms", "Classe"])
+
+        for numero, item in enumerate(donnees["non_classes"], start=2):
+            for colonne, valeur in enumerate([
+                item["eleve"].matricule,
+                item["eleve"].nom,
+                item["eleve"].prenoms,
+                item["classe"].nom,
+            ], start=1):
+                feuille_nc.cell(row=numero, column=colonne, value=valeur)
+
+        _ajuster_largeurs_colonnes(feuille_nc)
+
+    tampon = io.BytesIO()
+    classeur.save(tampon)
+
+    return tampon.getvalue()
+
+
+def _generer_pdf_bilan_trimestre(donnees):
+    """PDF du bilan de trimestre (paysage) : synthèse, synthèse par
+    classe puis liste des élèves."""
+
+    from xml.sax.saxutils import escape
+
+    from reportlab.lib import colors
+    from reportlab.lib.pagesizes import A4, landscape
+    from reportlab.lib.styles import ParagraphStyle
+    from reportlab.lib.units import cm
+    from reportlab.platypus import (
+        Paragraph,
+        SimpleDocTemplate,
+        Spacer,
+        Table,
+        TableStyle,
+    )
+
+    ACCENT = colors.HexColor("#2f5bea")
+    GRIS = colors.HexColor("#667085")
+    FOND = colors.HexColor("#eef1f6")
+    LIGNE = colors.HexColor("#e4e7ec")
+
+    COULEURS = {
+        "reussite": "#0b6b2f",
+        "surveiller": "#b54708",
+        "difficulte": "#b42318",
+        "hausse": "#0b6b2f",
+        "baisse": "#b42318",
+        "stable": "#475467",
+    }
+
+    base = ParagraphStyle(
+        "base", fontName="Helvetica", fontSize=9, leading=12,
+        textColor=colors.HexColor("#1d2433"),
+    )
+    centre = ParagraphStyle("centre", parent=base, alignment=1)
+    petit = ParagraphStyle(
+        "petit", parent=base, fontSize=8.5, leading=11, textColor=GRIS,
+    )
+    titre2 = ParagraphStyle(
+        "titre2", parent=base, fontName="Helvetica-Bold", fontSize=12,
+        leading=15, textColor=ACCENT, spaceBefore=14, spaceAfter=6,
+    )
+
+    def p(texte, style=base):
+        return Paragraph(texte, style)
+
+    def nombre(valeur, signe=False):
+        if valeur is None:
+            return "—"
+        texte = f"{valeur:+.2f}" if signe else f"{valeur:.2f}"
+        return texte.replace(".", ",")
+
+    def moyenne_texte(valeur, gras=True):
+        couleur = "#b42318" if valeur < SEUIL_PASSAGE else "#1d2433"
+        texte = nombre(valeur)
+        return f'<font color="{couleur}">{"<b>" + texte + "</b>" if gras else texte}</font>'
+
+    def entete(texte, style=base):
+        return p(f"<b>{texte}</b>", ParagraphStyle(
+            "th", parent=style, fontSize=8.5, textColor=GRIS))
+
+    def style_tableau():
+        return TableStyle([
+            ("BACKGROUND", (0, 0), (-1, 0), FOND),
+            ("LINEBELOW", (0, 0), (-1, -1), 0.5, LIGNE),
+            ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+            ("TOPPADDING", (0, 0), (-1, -1), 4),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
+            ("LEFTPADDING", (0, 0), (-1, -1), 6),
+            ("RIGHTPADDING", (0, 0), (-1, -1), 6),
+        ])
+
+    facteur = 26.0 / 26.6
+    synthese = donnees["synthese"]
+
+    contenu = [
+        p("BILAN DE FIN DE TRIMESTRE", ParagraphStyle(
+            "sur", parent=petit, fontName="Helvetica-Bold", textColor=ACCENT)),
+        p(f"{escape(donnees['trimestre_libelle'])} — "
+          f"{escape(str(donnees['annee'].nom))}",
+          ParagraphStyle("titre", parent=base, fontName="Helvetica-Bold",
+                         fontSize=18, leading=22)),
+        Spacer(1, 3),
+        p(" &nbsp;·&nbsp; ".join(
+            escape(x) for x in _libelle_filtres_bilan_trimestre(donnees)[2:]
+        ) or "Tous les niveaux et toutes les classes", petit),
+        Spacer(1, 10),
+    ]
+
+    # ---- Synthèse ----
+
+    def part(code):
+        return (f"{synthese[code]}  ({synthese[code + '_pct']:.1f} %)"
+                .replace(".", ","))
+
+    cartes = [
+        ("Élèves classés", f"{synthese['total']}"
+         + (f"  (+ {synthese['non_classes']} non classé(s))"
+            if synthese["non_classes"] else "")),
+        ("Moyenne générale", nombre(synthese["moyenne_generale"])),
+        (SITUATIONS["reussite"], part("reussite")),
+        (SITUATIONS["surveiller"], part("surveiller")),
+        (SITUATIONS["difficulte"], part("difficulte")),
+    ]
+
+    resume = Table(
+        [[
+            [p(f'<font color="#667085" size="8">{escape(lib)}</font>'),
+             p(f"<b>{escape(val)}</b>", ParagraphStyle(
+                 "val", parent=base, fontSize=11.5, leading=14))]
+            for lib, val in cartes
+        ]],
+        colWidths=[5.2 * cm * facteur] * 5,
+    )
+    resume.setStyle(TableStyle([
+        ("BOX", (0, 0), (-1, -1), 0.5, LIGNE),
+        ("INNERGRID", (0, 0), (-1, -1), 0.5, LIGNE),
+        ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#f8f9fb")),
+        ("VALIGN", (0, 0), (-1, -1), "TOP"),
+        ("TOPPADDING", (0, 0), (-1, -1), 7),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 7),
+        ("LEFTPADDING", (0, 0), (-1, -1), 9),
+    ]))
+    contenu.append(resume)
+
+    # ---- Synthèse par classe ----
+
+    if donnees["par_classe"]:
+        contenu.append(p("Synthèse par classe", titre2))
+
+        lignes = [[
+            entete("Classe"), entete("Effectif classé", centre),
+            entete("Moyenne", centre), entete("Réussite", centre),
+            entete("Meilleure moyenne"), entete("Plus faible moyenne"),
+        ]]
+
+        for g in donnees["par_classe"]:
+            m, f = g["meilleur"], g["plus_faible"]
+            lignes.append([
+                p(f"<b>{escape(g['classe'].nom)}</b>"),
+                p(str(g["effectif"]), centre),
+                p(moyenne_texte(g["moyenne"]), centre),
+                p(f"{g['taux_reussite']:.1f} %".replace(".", ","), centre),
+                p(f"{nombre(m['moyenne'])} — {escape(m['eleve'].nom)}"),
+                p(f"{nombre(f['moyenne'])} — {escape(f['eleve'].nom)}"),
+            ])
+
+        tableau = Table(
+            lignes, repeatRows=1,
+            colWidths=[l * cm * facteur for l in [3.2, 3.0, 2.8, 2.8, 7.1, 7.1]],
+        )
+        tableau.setStyle(style_tableau())
+        contenu.append(tableau)
+
+    # ---- Liste des élèves ----
+
+    contenu.append(p("Élèves", titre2))
+
+    lignes = [[
+        entete("N°", centre), entete("Élève"), entete("Classe"),
+        entete("Moyenne", centre), entete("Évolution", centre),
+        entete("Rang", centre), entete("Situation"),
+    ]]
+
+    for numero, ligne in enumerate(donnees["lignes"], start=1):
+        rang = (f"{'1er' if ligne['rang'] == 1 else str(ligne['rang']) + 'e'}"
+                f' <font color="#667085" size="8">/ {ligne["effectif"]}</font>'
+                if ligne["rang"] else "—")
+
+        if ligne["evolution_sens"]:
+            texte_evo = (
+                "=" if ligne["evolution_sens"] == "stable"
+                else nombre(ligne["evolution"], signe=True)
+            )
+            evolution = (
+                f'<font color="{COULEURS[ligne["evolution_sens"]]}">'
+                f'{texte_evo}</font> '
+                f'<font color="#667085" size="8">vs {ligne["evolution_ref"]}</font>'
+            )
+        else:
+            evolution = "—"
+
+        lignes.append([
+            p(str(numero), centre),
+            p(f"<b>{escape(ligne['eleve'].nom)}</b> "
+              f"{escape(ligne['eleve'].prenoms)}"),
+            p(escape(ligne["classe"].nom)),
+            p(moyenne_texte(ligne["moyenne"]), centre),
+            p(evolution, centre),
+            p(rang, centre),
+            p(f'<font color="{COULEURS[ligne["situation"]]}">'
+              f'<b>{escape(ligne["situation_libelle"])}</b></font>'),
+        ])
+
+    if len(lignes) == 1:
+        contenu.append(p("Aucun élève ne correspond à ces filtres."))
+    else:
+        tableau = Table(
+            lignes, repeatRows=1,
+            colWidths=[l * cm * facteur for l in [1.1, 7.2, 2.8, 2.4, 3.2, 2.6, 6.7]],
+        )
+        tableau.setStyle(style_tableau())
+        contenu.append(tableau)
+
+    if donnees["non_classes"]:
+        contenu.append(Spacer(1, 8))
+        contenu.append(p(
+            f"{len(donnees['non_classes'])} élève(s) non classé(s) : pas de "
+            "moyenne pour ce trimestre (liste dans l'export Excel).", petit,
+        ))
+
+    contenu.append(Spacer(1, 4))
+    contenu.append(p(
+        "Les moyennes par matière figurent dans l'export Excel. "
+        "Évolution : écart avec la moyenne du trimestre précédent.", petit,
+    ))
+
+    def pied_de_page(canvas, doc):
+        largeur, _ = landscape(A4)
+        canvas.saveState()
+        canvas.setStrokeColor(LIGNE)
+        canvas.line(1.5 * cm, 1.4 * cm, largeur - 1.5 * cm, 1.4 * cm)
+        canvas.setFont("Helvetica", 8)
+        canvas.setFillColor(GRIS)
+        canvas.drawString(
+            1.5 * cm, 0.9 * cm,
+            f"Analyse scolaire — bilan {donnees['trimestre']} "
+            f"{donnees['annee'].nom} — généré le {datetime.now():%d/%m/%Y}",
+        )
+        canvas.drawRightString(largeur - 1.5 * cm, 0.9 * cm, f"Page {doc.page}")
+        canvas.restoreState()
+
+    tampon = io.BytesIO()
+
+    document = SimpleDocTemplate(
+        tampon, pagesize=landscape(A4),
+        leftMargin=1.5 * cm, rightMargin=1.5 * cm,
+        topMargin=1.5 * cm, bottomMargin=2 * cm,
+        title=f"Bilan {donnees['trimestre']} {donnees['annee'].nom}",
+        author="Analyse scolaire",
+    )
+    document.build(
+        contenu, onFirstPage=pied_de_page, onLaterPages=pied_de_page,
+    )
+
+    return tampon.getvalue()
+
+
+def exporter_bilan_trimestre_excel(request):
+    """Télécharge le bilan de fin de trimestre en Excel, avec les mêmes
+    filtres que la page."""
+
+    donnees = _donnees_bilan_trimestre(request.GET)
+
+    if donnees["indisponible"]:
+        return redirect("bilan_trimestre")
+
+    reponse = HttpResponse(
+        _construire_classeur_bilan_trimestre(donnees),
+        content_type=(
+            "application/vnd.openxmlformats-officedocument"
+            ".spreadsheetml.sheet"
+        ),
+    )
+    reponse["Content-Disposition"] = (
+        f'attachment; filename="{_nom_fichier_bilan_trimestre(donnees, "xlsx")}"'
+    )
+
+    return reponse
+
+
+def exporter_bilan_trimestre_pdf(request):
+    """Télécharge le bilan de fin de trimestre en PDF, avec les mêmes
+    filtres que la page."""
+
+    donnees = _donnees_bilan_trimestre(request.GET)
+
+    if donnees["indisponible"]:
+        return redirect("bilan_trimestre")
+
+    try:
+        pdf = _generer_pdf_bilan_trimestre(donnees)
+    except ImportError:
+        return HttpResponse(
+            "La bibliothèque reportlab n'est pas installée. "
+            "Installez-la avec : pip install reportlab",
+            status=501,
+            content_type="text/plain; charset=utf-8",
+        )
+
+    reponse = HttpResponse(pdf, content_type="application/pdf")
+    reponse["Content-Disposition"] = (
+        f'attachment; filename="{_nom_fichier_bilan_trimestre(donnees, "pdf")}"'
+    )
+
+    return reponse

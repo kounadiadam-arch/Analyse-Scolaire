@@ -4,516 +4,528 @@
 
 
 {% block extra_style %}
-    <style>
+<style>
+
+    /* =====================================================
+       Toutes les règles sont limitées à .dash : plus aucun
+       style global (button, table, th, td, h1, body…) ne
+       déborde sur le menu ou sur les autres pages.
+       Les couleurs viennent des variables de base.html.
+    ===================================================== */
+
+    .dash {
+        --d-surface: var(--surface, #fff);
+        --d-bg: var(--bg, #f5f6f8);
+        --d-border: var(--border, #e4e7ec);
+        --d-border-strong: var(--border-strong, #d0d5dd);
+        --d-text: var(--text, #1d2433);
+        --d-muted: var(--text-muted, #667085);
+        --d-accent: var(--accent, #2f5bea);
+        --d-accent-hover: var(--accent-hover, #2449c7);
+        --d-accent-soft: var(--accent-soft, #eaf0ff);
+        --d-radius: var(--radius, 10px);
+
+        --ok: #0b6b2f;      --ok-bg: #e7f6ec;
+        --warn: #93370d;    --warn-bg: #fef0c7;
+        --bad: #b42318;     --bad-bg: #fdecea;
+        --info: #1e40af;    --info-bg: #e8effe;
+        --neutral: #475467; --neutral-bg: #eef0f3;
+    }
+
+    .dash h1 {
+        margin: 0 0 4px;
+    }
+
+    .dash h2 {
+        margin: 0;
+        font-size: 18px;
+    }
+
+    .dash h3 {
+        margin: 0;
+        font-size: 15px;
+        font-weight: 700;
+    }
+
+    .dash .sr-only {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        overflow: hidden;
+        clip: rect(0 0 0 0);
+        white-space: nowrap;
+    }
+
+    .dash .muted {
+        color: var(--d-muted);
+    }
+
+    /* ---------- En-tête de page ---------- */
+
+    .dash-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-end;
+        gap: 16px;
+        flex-wrap: wrap;
+        margin-bottom: 24px;
+    }
+
+    .dash-subtitle {
+        margin: 0;
+        color: var(--d-muted);
+    }
+
+    /* ---------- Panneaux ---------- */
+
+    .dash .panel {
+        background: var(--d-surface);
+        border: 1px solid var(--d-border);
+        border-radius: var(--d-radius);
+        padding: 20px 22px;
+        margin-bottom: 20px;
+    }
+
+    .dash .panel-head {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 12px;
+        flex-wrap: wrap;
+        margin-bottom: 16px;
+    }
+
+    .dash .panel-head-tight {
+        margin-bottom: 12px;
+    }
+
+    .dash .section-note {
+        margin: 4px 0 0;
+        font-size: 13.5px;
+        color: var(--d-muted);
+    }
+
+    /* ---------- Boutons ---------- */
+
+    .dash .btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        min-height: 40px;
+        padding: 8px 16px;
+        font: inherit;
+        font-size: 14px;
+        font-weight: 700;
+        border: 1px solid transparent;
+        border-radius: 8px;
+        cursor: pointer;
+        text-decoration: none;
+        white-space: nowrap;
+        transition: background 0.15s ease, border-color 0.15s ease;
+    }
+
+    .dash .btn-primary {
+        background: var(--d-accent);
+        color: #fff;
+    }
+
+    .dash .btn-primary:hover {
+        background: var(--d-accent-hover);
+    }
+
+    .dash .btn-secondary {
+        background: var(--d-surface);
+        color: var(--d-accent);
+        border-color: var(--d-accent);
+    }
+
+    .dash .btn-secondary:hover {
+        background: var(--d-accent-soft);
+    }
+
+    .dash .btn:disabled {
+        opacity: 0.55;
+        cursor: not-allowed;
+    }
+
+    .dash .btn-link {
+        color: var(--d-muted);
+        font-weight: 600;
+        font-size: 14px;
+        text-decoration: none;
+        padding: 8px 4px;
+    }
+
+    .dash .btn-link:hover {
+        color: var(--d-text);
+        text-decoration: underline;
+    }
+
+    .dash .btn svg {
+        width: 17px;
+        height: 17px;
+        stroke: currentColor;
+        fill: none;
+        stroke-width: 2;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+    }
+
+    /* ---------- Messages ---------- */
+
+    .dash .message {
+        display: flex;
+        gap: 10px;
+        padding: 13px 16px;
+        margin-bottom: 20px;
+        border-radius: 8px;
+        border: 1px solid;
+        font-weight: 600;
+        font-size: 14.5px;
+    }
+
+    .dash .message.success { background: var(--ok-bg);   color: var(--ok);   border-color: #b7e4c7; }
+    .dash .message.error   { background: var(--bad-bg);  color: var(--bad);  border-color: #f5c6c1; }
+    .dash .message.warning { background: var(--warn-bg); color: var(--warn); border-color: #f8dc8c; }
+    .dash .message.info,
+    .dash .message.debug   { background: var(--info-bg); color: var(--info); border-color: #c5d5fb; }
+
+    /* ---------- Filtres ---------- */
+
+    .filters-form {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 14px;
+    }
+
+    .filters-form .field-search {
+        grid-column: 1 / -1;
+    }
+
+    .filters-form label {
+        display: block;
+        margin-bottom: 5px;
+        font-size: 13px;
+        font-weight: 700;
+        color: var(--d-muted);
+    }
+
+    .filters-form select,
+    .filters-form input[type="search"] {
+        width: 100%;
+        min-height: 42px;
+        padding: 9px 12px;
+        font: inherit;
+        font-size: 14.5px;
+        color: var(--d-text);
+        background: var(--d-surface);
+        border: 1px solid var(--d-border-strong);
+        border-radius: 8px;
+    }
+
+    .filters-form select:focus,
+    .filters-form input[type="search"]:focus {
+        outline: 2px solid var(--d-accent);
+        outline-offset: 1px;
+        border-color: var(--d-accent);
+    }
+
+    .active-filters {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 8px;
+        margin-top: 16px;
+        padding-top: 14px;
+        border-top: 1px solid var(--d-border);
+    }
+
+    .active-filters .label {
+        font-size: 13px;
+        font-weight: 700;
+        color: var(--d-muted);
+    }
+
+    .filter-badge {
+        display: inline-flex;
+        padding: 4px 10px;
+        border-radius: 999px;
+        background: var(--d-accent-soft);
+        color: var(--d-accent-hover);
+        font-size: 13px;
+        font-weight: 700;
+    }
+
+    /* ---------- Indicateurs clés ---------- */
+
+    .kpis {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 16px;
+        margin-bottom: 20px;
+    }
+
+    .kpi {
+        background: var(--d-surface);
+        border: 1px solid var(--d-border);
+        border-radius: var(--d-radius);
+        padding: 18px 20px;
+    }
+
+    .kpi-label {
+        margin: 0;
+        font-size: 13.5px;
+        font-weight: 600;
+        color: var(--d-muted);
+    }
+
+    .kpi-value {
+        margin: 4px 0 0;
+        font-size: 30px;
+        font-weight: 800;
+        letter-spacing: -0.02em;
+        line-height: 1.15;
+    }
+
+    .kpi-value small {
+        font-size: 14px;
+        font-weight: 600;
+        color: var(--d-muted);
+        letter-spacing: 0;
+    }
+
+    /* ---------- Page « Statistiques » ---------- */
+
+    .period {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        margin-top: 10px;
+        padding: 4px 12px;
+        border-radius: 999px;
+        background: var(--d-accent-soft);
+        color: var(--d-accent-hover);
+        font-size: 13px;
+        font-weight: 700;
+    }
+
+    .kpis {
+        grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+    }
+
+    .kpi-value small {
+        font-size: 13.5px;
+    }
+
+    .kpi-sub {
+        margin: 4px 0 0;
+        font-size: 13.5px;
+        color: var(--d-muted);
+    }
+
+    .kpi.is-ok   { border-top: 3px solid #16a34a; }
+    .kpi.is-warn { border-top: 3px solid #f59e0b; }
+    .kpi.is-bad  { border-top: 3px solid #dc2626; }
+
+    .scroll-hint {
+        display: none;
+        margin: 0 0 10px;
+        font-size: 13px;
+        color: var(--d-muted);
+    }
+
+    .stat-wrapper {
+        overflow-x: auto;
+        border: 1px solid var(--d-border);
+        border-radius: 8px;
+    }
+
+    .stat-table {
+        width: 100%;
+        border-collapse: separate;
+        border-spacing: 0;
+        font-size: 13.5px;
+    }
+
+    .stat-table.large  { min-width: 1500px; }
+    .stat-table.medium { min-width: 760px; }
+
+    .stat-table th,
+    .stat-table td {
+        padding: 9px 10px;
+        text-align: center;
+        white-space: nowrap;
+        border-bottom: 1px solid var(--d-border);
+        background: var(--d-surface);
+    }
+
+    .stat-table thead th {
+        background: #f1f3f6;
+        color: #344054;
+        font-size: 12.5px;
+        font-weight: 700;
+    }
+
+    /* Premier niveau d'en-tête : les groupes de colonnes */
+    .stat-table thead tr:first-child th {
+        border-bottom: 1px solid var(--d-border-strong);
+    }
+
+    /* Colonne « Niveau » figée à gauche */
+    .stat-table th[scope="row"],
+    .stat-table thead th.col-niveau {
+        position: sticky;
+        left: 0;
+        z-index: 1;
+        text-align: left;
+        font-weight: 700;
+        min-width: 130px;
+        box-shadow: 1px 0 0 var(--d-border);
+    }
+
+    .stat-table thead th.col-niveau {
+        z-index: 2;
+        background: #f1f3f6;
+    }
+
+    .stat-table tbody th[scope="row"] {
+        background: var(--d-surface);
+        color: var(--d-text);
+    }
+
+    /* Séparateur visuel entre les groupes de colonnes */
+    .stat-table .grp {
+        border-left: 2px solid var(--d-border-strong);
+    }
+
+    /* Repère de couleur des trois tranches de moyenne */
+    .stat-table thead th.band-ok   { border-top: 3px solid #16a34a; }
+    .stat-table thead th.band-warn { border-top: 3px solid #f59e0b; }
+    .stat-table thead th.band-bad  { border-top: 3px solid #dc2626; }
+
+    .stat-table tbody tr:hover td,
+    .stat-table tbody tr:hover th[scope="row"] {
+        background: #f8f9fb;
+    }
+
+    .stat-table .moyenne {
+        font-weight: 800;
+    }
+
+    /* Lignes de total */
+    .stat-table tr.total-row td,
+    .stat-table tr.total-row th[scope="row"] {
+        font-weight: 800;
+        background: #eef2fb;
+    }
+
+    .stat-table tr.total-general td,
+    .stat-table tr.total-general th[scope="row"] {
+        background: #dbe5fb;
+        border-top: 2px solid var(--d-accent);
+    }
+
+    .stat-table tbody tr:last-child td,
+    .stat-table tbody tr:last-child th {
+        border-bottom: none;
+    }
+
+    .stat-table td.empty-row {
+        padding: 28px;
+        color: var(--d-muted);
+    }
+
+    @media (max-width: 900px) {
+        .scroll-hint { display: block; }
+    }
+
+    @media (max-width: 1100px) {
+        .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+        .filters-form { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+
+    @media (max-width: 600px) {
+        .kpis { grid-template-columns: 1fr; }
+        .filters-form { grid-template-columns: 1fr; }
+        .dash .panel { padding: 16px; }
+        .dash-header .btn { width: 100%; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        .dash * { transition: none !important; animation: none !important; }
+    }
+
+    @media print {
+        .filters-panel, .btn { display: none !important; }
+        .stat-table.large, .stat-table.medium { min-width: 0; font-size: 9px; }
+    }
+
+</style>
 
-        /* =========================
-           BOITE DE FILTRES
-        ========================= */
-
-        .filter-box {
-            background: white;
-            padding: 22px;
-            border-radius: 10px;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-            margin-bottom: 25px;
-        }
-
-        .filter-box h2 {
-            margin-bottom: 18px;
-        }
-
-        .filter-box-header {
-
-            display: flex;
-
-            align-items: center;
-
-            justify-content: space-between;
-
-            gap: 15px;
-
-        }
-
-
-        .filter-box-header h2 {
-
-            margin-bottom: 0;
-
-        }
-
-        /* =========================
-           FILTRES
-        ========================= */
-
-        .filters {
-
-            display: flex;
-
-            gap: 12px;
-
-            align-items: end;
-
-            margin-bottom: 15px;
-
-        }
-
-
-        .filters div {
-
-            flex: 1;
-
-        }
-
-
-        .filters label {
-
-            display: block;
-
-            margin-bottom: 6px;
-
-            font-size: 14px;
-
-            font-weight: bold;
-
-        }
-
-
-        .filters select {
-
-            width: 100%;
-
-            padding: 10px;
-
-            border: 1px solid #ccc;
-
-            border-radius: 6px;
-
-            background: white;
-
-        }
-
-
-        /* =========================
-           BOUTONS
-        ========================= */
-
-        button {
-
-            padding: 10px 20px;
-
-            border: none;
-
-            border-radius: 6px;
-
-            cursor: pointer;
-
-            font-weight: bold;
-
-        }
-
-
-        .import-box button {
-
-            background: #198754;
-
-            color: white;
-
-        }
-
-
-        .filter-box button {
-
-            background: #0d6efd;
-
-            color: white;
-
-        }
-
-
-        button:hover {
-
-            opacity: 0.9;
-
-        }
-
-
-        /* Masquer le bouton Analyser puisqu'il n'est plus nécessaire */
-        .filter-box form > button {
-            display: none;
-        }
-
-        /* =========================
-           CLASSEMENT
-        ========================= */
-
-        .table-container {
-
-            background: white;
-
-            padding: 20px;
-
-            border-radius: 10px;
-
-            box-shadow:
-                0 2px 8px rgba(0, 0, 0, 0.08);
-
-        }
-
-
-        .table-container h2 {
-
-            margin-bottom: 20px;
-
-        }
-
-
-        .table-wrapper {
-
-            overflow-x: auto;
-
-        }
-
-
-
-        /* =========================
-           FILTRES ACTIFS + PÉRIODE
-        ========================= */
-
-        .filter-actions {
-            display: flex;
-            gap: 10px;
-            align-items: center;
-            flex-wrap: wrap;
-            margin-top: 14px;
-        }
-
-        .btn-reset {
-            display: inline-block;
-            padding: 10px 16px;
-            border-radius: 6px;
-            background: #6c757d;
-            color: white;
-            text-decoration: none;
-            font-weight: bold;
-        }
-
-        .btn-reset:hover {
-            opacity: 0.9;
-        }
-
-        .active-filters {
-            display: flex;
-            flex-wrap: wrap;
-            align-items: center;
-            gap: 8px;
-            margin: 14px 0 8px;
-        }
-
-        .active-filters-title {
-            font-size: 14px;
-            font-weight: bold;
-            color: #555;
-        }
-
-        .filter-badge {
-            display: inline-flex;
-            align-items: center;
-            gap: 7px;
-            padding: 6px 10px;
-            border-radius: 999px;
-            background: #e7f1ff;
-            color: #0b5ed7;
-            border: 1px solid #b6d4fe;
-            font-size: 13px;
-            font-weight: bold;
-        }
-
-        .period-banner {
-            margin: 0 0 25px;
-            padding: 13px 18px;
-            border-radius: 8px;
-            background: #eef5ff;
-            border-left: 4px solid #0d6efd;
-            color: #17365d;
-        }
-
-        .period-banner strong {
-            margin-right: 6px;
-        }
-
-        .search-box {
-            margin-top: 15px;
-        }
-
-        .search-box label {
-            display: block;
-            margin-bottom: 6px;
-            font-size: 14px;
-            font-weight: bold;
-        }
-
-        .search-box input {
-            width: 100%;
-            padding: 10px 12px;
-            border: 1px solid #ccc;
-            border-radius: 6px;
-            font-size: 14px;
-        }
-
-        .search-box input:focus {
-            outline: none;
-            border-color: #0d6efd;
-            box-shadow: 0 0 0 2px rgba(13, 110, 253, 0.12);
-        }
-
-        .message {
-            padding: 15px;
-            margin-bottom: 20px;
-            border-radius: 8px;
-            font-weight: bold;
-        }
-
-        .message.error {
-            background: #f8d7da;
-            color: #721c24;
-            border: 1px solid #f5c6cb;
-        }
-
-        table.stats-effectifs {
-
-            width: 100%;
-
-            border-collapse: collapse;
-
-            font-size: 13px;
-
-            min-width: 900px;
-
-        }
-
-
-        table.stats-effectifs th,
-        table.stats-effectifs td {
-
-            border: 1px solid #333;
-
-            padding: 6px 10px;
-
-            text-align: center;
-
-            white-space: nowrap;
-
-        }
-
-
-        table.stats-effectifs thead th {
-
-            background: #2c3e50;
-
-            color: white;
-
-            font-weight: bold;
-
-        }
-
-
-        table.stats-effectifs td:first-child,
-        table.stats-effectifs th:first-child {
-
-            text-align: left;
-
-            font-weight: bold;
-
-            background: #f8f9fa;
-
-        }
-
-
-        table.stats-effectifs thead th:first-child {
-
-            background: #2c3e50;
-
-        }
-
-
-        table.stats-effectifs tbody tr:nth-child(even) {
-
-            background: #fafafa;
-
-        }
-
-
-        table.stats-effectifs tr.total-row td {
-
-            font-weight: bold;
-
-            background: #dfe9f5;
-
-        }
-
-
-        table.stats-effectifs tr.total-row td:first-child {
-
-            background: #c5d7ec;
-
-        }
-
-
-        table.stats-effectifs tr.total-general td {
-
-            background: #b8cce4;
-
-        }
-
-
-        table.stats-effectifs tr.total-general td:first-child {
-
-            background: #9cb9dd;
-
-        }
-
-
-        /* =========================
-           TABLEAU STATISTIQUES PAR NIVEAU
-        ========================= */
-
-        .stats-niveaux-wrapper {
-
-            overflow-x: auto;
-
-        }
-
-
-        table.stats-niveaux {
-
-            width: 100%;
-
-            border-collapse: collapse;
-
-            font-size: 13px;
-
-            min-width: 1400px;
-
-        }
-
-
-        table.stats-niveaux th,
-        table.stats-niveaux td {
-
-            border: 1px solid #333;
-
-            padding: 6px 8px;
-
-            text-align: center;
-
-            white-space: nowrap;
-
-        }
-
-
-        table.stats-niveaux thead th {
-
-            background: #2c3e50;
-
-            color: white;
-
-            font-weight: bold;
-
-        }
-
-
-        table.stats-niveaux td:first-child,
-        table.stats-niveaux th:first-child {
-
-            text-align: left;
-
-            position: sticky;
-
-            left: 0;
-
-            background: #f8f9fa;
-
-            font-weight: bold;
-
-            z-index: 1;
-
-        }
-
-
-        table.stats-niveaux thead th:first-child {
-
-            background: #2c3e50;
-
-            z-index: 2;
-
-        }
-
-
-        table.stats-niveaux tbody tr:nth-child(even) {
-
-            background: #fafafa;
-
-        }
-
-
-        table.stats-niveaux tr.total-row td {
-
-            font-weight: bold;
-
-            background: #dfe9f5;
-
-        }
-
-
-        table.stats-niveaux tr.total-row td:first-child {
-
-            background: #c5d7ec;
-
-        }
-
-
-        table.stats-niveaux tr.total-general td {
-
-            background: #b8cce4;
-
-        }
-
-
-        table.stats-niveaux tr.total-general td:first-child {
-
-            background: #9cb9dd;
-
-        }
-
-    </style>
 {% endblock %}
 
 
 {% block content %}
 
-<h1>📈 Statistiques</h1>
+<div class="dash">
 
-{% if messages %}
-    {% for message in messages %}
-        <div class="message {{ message.tags }}">{{ message }}</div>
-    {% endfor %}
-{% endif %}
+    <!-- =========================
+         EN-TÊTE
+    ========================= -->
+
+    <header class="dash-header">
+        <div>
+            <h1>Statistiques</h1>
+            <p class="dash-subtitle">Effectifs et résultats trimestriels par niveau, selon les filtres choisis.</p>
+            {% if periode_analysee %}
+                <span class="period">Période analysée : {{ periode_analysee }}</span>
+            {% endif %}
+        </div>
+
+        <!-- L'export reprend les filtres affichés (année, niveau, classe, trimestre) -->
+        <a href="{% url 'export_statistiques_excel' %}?annee={{ annee_selectionnee|default:''|urlencode }}&amp;niveau={{ niveau_selectionne|default:''|urlencode }}&amp;classe={{ classe_selectionnee|default:''|urlencode }}&amp;trimestre={{ trimestre_selectionne|default:''|urlencode }}"
+           class="btn btn-secondary">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M4 20h16"/></svg>
+            Exporter en Excel
+        </a>
+    </header>
 
 
-<div class="filter-box">
+    <!-- =========================
+         MESSAGES
+    ========================= -->
 
-    <div class="filter-box-header">
-        <h2>🔎 Filtrer les statistiques</h2>
-    </div>
+    {% if messages %}
+        {% for message in messages %}
+            <div class="message {{ message.tags }}"
+                 role="{% if message.level >= 40 %}alert{% else %}status{% endif %}">
+                {{ message }}
+            </div>
+        {% endfor %}
+    {% endif %}
 
-    <form method="GET" id="filterForm">
 
-        <div class="filters">
+    <!-- =========================
+         FILTRES
+    ========================= -->
 
-            <!-- ANNÉE -->
+    <section class="panel filters-panel" aria-labelledby="titre-filtres">
+
+        <div class="panel-head">
+            <h2 id="titre-filtres">Filtrer les statistiques</h2>
+
+            {% if filtres_actifs %}
+                <a href="{% url 'statistiques' %}" class="btn-link">↺ Réinitialiser les filtres</a>
+            {% endif %}
+        </div>
+
+        <!-- Le formulaire s'envoie automatiquement dès qu'un champ change -->
+        <form method="GET" id="filterForm" class="filters-form">
+
             <div>
                 <label for="annee">Année scolaire</label>
-                <select name="annee" id="annee" onchange="document.getElementById('filterForm').submit();">
+                <select name="annee" id="annee">
                     <option value="">Toutes les années</option>
                     {% for annee in annees %}
                         <option value="{{ annee.id }}" {% if annee_selectionnee == annee.id|stringformat:"s" %}selected{% endif %}>
@@ -523,10 +535,9 @@
                 </select>
             </div>
 
-            <!-- NIVEAU -->
             <div>
                 <label for="niveau">Niveau</label>
-                <select name="niveau" id="niveau" onchange="document.getElementById('filterForm').submit();">
+                <select name="niveau" id="niveau">
                     <option value="">Tous les niveaux</option>
                     {% for niveau in niveaux %}
                         <option value="{{ niveau }}" {% if niveau_selectionne == niveau %}selected{% endif %}>
@@ -536,10 +547,9 @@
                 </select>
             </div>
 
-            <!-- CLASSE -->
             <div>
                 <label for="classe">Classe</label>
-                <select name="classe" id="classe" onchange="document.getElementById('filterForm').submit();">
+                <select name="classe" id="classe">
                     <option value="">Toutes les classes</option>
                     {% for classe in classes %}
                         <option value="{{ classe.id }}" {% if classe_selectionnee == classe.id|stringformat:"s" %}selected{% endif %}>
@@ -549,10 +559,9 @@
                 </select>
             </div>
 
-            <!-- TRIMESTRE -->
             <div>
                 <label for="trimestre">Trimestre</label>
-                <select name="trimestre" id="trimestre" onchange="document.getElementById('filterForm').submit();">
+                <select name="trimestre" id="trimestre">
                     <option value="">Tous les trimestres</option>
                     <option value="T1" {% if trimestre_selectionne == "T1" %}selected{% endif %}>Trimestre 1</option>
                     <option value="T2" {% if trimestre_selectionne == "T2" %}selected{% endif %}>Trimestre 2</option>
@@ -560,215 +569,227 @@
                 </select>
             </div>
 
-        </div>
+            <noscript>
+                <button type="submit" class="btn btn-primary">Appliquer les filtres</button>
+            </noscript>
 
-        <div class="filter-actions">
-            <a href="{% url 'statistiques' %}" class="btn-reset">↺ Réinitialiser les filtres</a>
-        </div>
+        </form>
 
-    </form>
-
-    {% if filtres_actifs %}
-        <div class="active-filters">
-            <span class="active-filters-title">Filtres actifs :</span>
-            {% for filtre in filtres_actifs %}
-                <span class="filter-badge">{{ filtre.libelle }} : {{ filtre.valeur }}</span>
-            {% endfor %}
-        </div>
-    {% endif %}
-
-</div>
-
-<!-- =========================
-     EFFECTIFS / AFFECTÉS / REDOUBLANTS PAR NIVEAU
-========================= -->
-
-<div class="table-container" style="margin-bottom: 30px;">
-
-
-    <h2>
-
-        👥 Effectifs, affectés et redoublants par niveau
-
-    </h2>
-
-
-    <div class="stats-niveaux-wrapper">
-
-
-        <table class="stats-effectifs">
-
-
-            <thead>
-
-                <tr>
-
-                    <th rowspan="2">Niveau</th>
-
-                    <th colspan="3">Effectif</th>
-                    <th colspan="3">Affectés</th>
-                    <th colspan="3">Redoublants</th>
-
-                </tr>
-
-                <tr>
-
-                    <th>G</th><th>F</th><th>Total</th>
-                    <th>G</th><th>F</th><th>Total</th>
-                    <th>G</th><th>F</th><th>Total</th>
-
-                </tr>
-
-            </thead>
-
-
-            <tbody>
-
-                {% for ligne in tableau_effectifs_niveaux %}
-
-                    <tr {% if ligne.is_total %}class="total-row{% if ligne.niveau == "Total Général" %} total-general{% endif %}"{% endif %}>
-
-                        <td>{{ ligne.niveau }}</td>
-
-                        <td>{{ ligne.effectif_g }}</td>
-                        <td>{{ ligne.effectif_f }}</td>
-                        <td>{{ ligne.effectif_t }}</td>
-
-                        <td>{{ ligne.affectes_g }}</td>
-                        <td>{{ ligne.affectes_f }}</td>
-                        <td>{{ ligne.affectes_t }}</td>
-
-                        <td>{{ ligne.redoublants_g }}</td>
-                        <td>{{ ligne.redoublants_f }}</td>
-                        <td>{{ ligne.redoublants_t }}</td>
-
-                    </tr>
-
-                {% empty %}
-
-                    <tr>
-                        <td colspan="10">Aucune donnée pour les filtres sélectionnés.</td>
-                    </tr>
-
+        {% if filtres_actifs %}
+            <div class="active-filters">
+                <span class="label">Filtres actifs :</span>
+                {% for filtre in filtres_actifs %}
+                    <span class="filter-badge">{{ filtre.libelle }} : {{ filtre.valeur }}</span>
                 {% endfor %}
+            </div>
+        {% endif %}
 
-            </tbody>
-
-
-        </table>
-
-
-    </div>
+    </section>
 
 
-</div>
+    <!-- =========================
+         SYNTHÈSE (ligne « Total général » du tableau par niveau)
+    ========================= -->
+
+    {% for ligne in tableau_statistiques_niveaux %}
+        {% if ligne.niveau|lower == "total général" %}
+            <section class="kpis" aria-label="Synthèse générale">
+
+                <div class="kpi">
+                    <p class="kpi-label">Effectif classé</p>
+                    <p class="kpi-value">{{ ligne.classe_t }}</p>
+                    <p class="kpi-sub">{{ ligne.non_classe_t }} non classé{{ ligne.non_classe_t|pluralize }}</p>
+                </div>
+
+                <div class="kpi is-ok">
+                    <p class="kpi-label">Moyenne ≥ 10</p>
+                    <p class="kpi-value">{{ ligne.sup10_pct|floatformat:1 }} <small>%</small></p>
+                    <p class="kpi-sub">{{ ligne.sup10_t }} élève{{ ligne.sup10_t|pluralize }}</p>
+                </div>
+
+                <div class="kpi is-warn">
+                    <p class="kpi-label">De 8,50 à moins de 10</p>
+                    <p class="kpi-value">{{ ligne.moy_pct|floatformat:1 }} <small>%</small></p>
+                    <p class="kpi-sub">{{ ligne.moy_t }} élève{{ ligne.moy_t|pluralize }}</p>
+                </div>
+
+                <div class="kpi is-bad">
+                    <p class="kpi-label">Moins de 8,50</p>
+                    <p class="kpi-value">{{ ligne.inf_pct|floatformat:1 }} <small>%</small></p>
+                    <p class="kpi-sub">{{ ligne.inf_t }} élève{{ ligne.inf_t|pluralize }}</p>
+                </div>
+
+                <div class="kpi">
+                    <p class="kpi-label">Moyenne générale</p>
+                    <p class="kpi-value">
+                        {% with moyenne=ligne.moyenne_niveau|floatformat:2 %}
+                            {% if moyenne %}{{ moyenne }} <small>/ 20</small>{% else %}—{% endif %}
+                        {% endwith %}
+                    </p>
+                </div>
+
+            </section>
+        {% endif %}
+    {% endfor %}
 
 
-<!-- =========================
-     STATISTIQUES PAR NIVEAU
-========================= -->
+    <!-- =========================
+         EFFECTIFS / AFFECTÉS / REDOUBLANTS PAR NIVEAU
+    ========================= -->
 
-<div class="table-container" style="margin-bottom: 30px;">
+    <section class="panel" aria-labelledby="titre-effectifs">
 
+        <div class="panel-head panel-head-tight">
+            <div>
+                <h2 id="titre-effectifs">Effectifs, affectés et redoublants par niveau</h2>
+                <p class="section-note">G : garçons · F : filles · T : total</p>
+            </div>
+        </div>
 
-    <h2>
+        <p class="scroll-hint">Faites défiler le tableau horizontalement pour voir toutes les colonnes.</p>
 
-        📈 Statistiques par niveau
-
-    </h2>
-
-
-    <div class="stats-niveaux-wrapper">
-
-
-        <table class="stats-niveaux">
-
-
-            <thead>
-
-                <tr>
-
-                    <th rowspan="2">Niveaux</th>
-                    <th rowspan="2">Nombres<br>de classes</th>
-
-                    <th colspan="3">Effectif classé</th>
-                    <th colspan="3">Effectif non classé</th>
-
-                    <th colspan="4">MOY TRIM &ge; 10</th>
-                    <th colspan="4">08.50 &le; MOY TRIM &lt; 10</th>
-                    <th colspan="4">MOY TRIM &lt; 08.50</th>
-
-                    <th rowspan="2">Moyenne<br>par niveau</th>
-
-                </tr>
-
-                <tr>
-
-                    <th>F</th><th>G</th><th>T</th>
-                    <th>F</th><th>G</th><th>T</th>
-                    <th>F</th><th>G</th><th>T</th><th>%</th>
-                    <th>F</th><th>G</th><th>T</th><th>%</th>
-                    <th>F</th><th>G</th><th>T</th><th>%</th>
-
-                </tr>
-
-            </thead>
-
-
-            <tbody>
-
-                {% for ligne in tableau_statistiques_niveaux %}
-
-                    <tr {% if ligne.is_total %}class="total-row{% if ligne.niveau == "Total général" %} total-general{% endif %}"{% endif %}>
-
-                        <td>{{ ligne.niveau }}</td>
-                        <td>{{ ligne.nombre_classes }}</td>
-
-                        <td>{{ ligne.classe_f }}</td>
-                        <td>{{ ligne.classe_g }}</td>
-                        <td>{{ ligne.classe_t }}</td>
-
-                        <td>{{ ligne.non_classe_f }}</td>
-                        <td>{{ ligne.non_classe_g }}</td>
-                        <td>{{ ligne.non_classe_t }}</td>
-
-                        <td>{{ ligne.sup10_f }}</td>
-                        <td>{{ ligne.sup10_g }}</td>
-                        <td>{{ ligne.sup10_t }}</td>
-                        <td>{{ ligne.sup10_pct }}%</td>
-
-                        <td>{{ ligne.moy_f }}</td>
-                        <td>{{ ligne.moy_g }}</td>
-                        <td>{{ ligne.moy_t }}</td>
-                        <td>{{ ligne.moy_pct }}%</td>
-
-                        <td>{{ ligne.inf_f }}</td>
-                        <td>{{ ligne.inf_g }}</td>
-                        <td>{{ ligne.inf_t }}</td>
-                        <td>{{ ligne.inf_pct }}%</td>
-
-                        <td class="moyenne">{{ ligne.moyenne_niveau|default:"-" }}</td>
-
-                    </tr>
-
-                {% empty %}
-
+        <div class="stat-wrapper">
+            <table class="stat-table medium">
+                <caption class="sr-only">Effectifs, affectés et redoublants par niveau, garçons, filles et total</caption>
+                <thead>
                     <tr>
-                        <td colspan="21">Aucune donnée pour les filtres sélectionnés.</td>
+                        <th rowspan="2" scope="col" class="col-niveau">Niveau</th>
+                        <th colspan="3" scope="colgroup" class="grp">Effectif</th>
+                        <th colspan="3" scope="colgroup" class="grp">Affectés</th>
+                        <th colspan="3" scope="colgroup" class="grp">Redoublants</th>
                     </tr>
+                    <tr>
+                        <th scope="col" class="grp">G</th><th scope="col">F</th><th scope="col">Total</th>
+                        <th scope="col" class="grp">G</th><th scope="col">F</th><th scope="col">Total</th>
+                        <th scope="col" class="grp">G</th><th scope="col">F</th><th scope="col">Total</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for ligne in tableau_effectifs_niveaux %}
+                        <tr {% if ligne.is_total %}class="total-row{% if ligne.niveau|lower == "total général" %} total-general{% endif %}"{% endif %}>
+                            <th scope="row">{{ ligne.niveau }}</th>
+                            <td class="grp">{{ ligne.effectif_g }}</td>
+                            <td>{{ ligne.effectif_f }}</td>
+                            <td>{{ ligne.effectif_t }}</td>
+                            <td class="grp">{{ ligne.affectes_g }}</td>
+                            <td>{{ ligne.affectes_f }}</td>
+                            <td>{{ ligne.affectes_t }}</td>
+                            <td class="grp">{{ ligne.redoublants_g }}</td>
+                            <td>{{ ligne.redoublants_f }}</td>
+                            <td>{{ ligne.redoublants_t }}</td>
+                        </tr>
+                    {% empty %}
+                        <tr>
+                            <td colspan="10" class="empty-row">Aucune donnée pour les filtres sélectionnés.</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
 
-                {% endfor %}
-
-            </tbody>
+    </section>
 
 
-        </table>
+    <!-- =========================
+         STATISTIQUES PAR NIVEAU
+    ========================= -->
 
+    <section class="panel" aria-labelledby="titre-niveaux">
 
-    </div>
+        <div class="panel-head panel-head-tight">
+            <div>
+                <h2 id="titre-niveaux">Statistiques par niveau</h2>
+                <p class="section-note">
+                    F : filles · G : garçons · T : total · MOY TRIM : moyenne trimestrielle.
+                    Les trois tranches de moyenne sont repérées par une couleur : vert (10 ou plus), orange (de 8,50 à moins de 10), rouge (moins de 8,50).
+                </p>
+            </div>
+        </div>
 
+        <p class="scroll-hint">Faites défiler le tableau horizontalement pour voir toutes les colonnes.</p>
+
+        <div class="stat-wrapper">
+            <table class="stat-table large">
+                <caption class="sr-only">Statistiques par niveau : effectif classé et non classé, répartition par tranche de moyenne trimestrielle et moyenne par niveau</caption>
+                <thead>
+                    <tr>
+                        <th rowspan="2" scope="col" class="col-niveau">Niveaux</th>
+                        <th rowspan="2" scope="col" class="grp">Nombre<br>de classes</th>
+                        <th colspan="3" scope="colgroup" class="grp">Effectif classé</th>
+                        <th colspan="3" scope="colgroup" class="grp">Effectif non classé</th>
+                        <th colspan="4" scope="colgroup" class="grp band-ok">MOY TRIM &ge; 10</th>
+                        <th colspan="4" scope="colgroup" class="grp band-warn">08.50 &le; MOY TRIM &lt; 10</th>
+                        <th colspan="4" scope="colgroup" class="grp band-bad">MOY TRIM &lt; 08.50</th>
+                        <th rowspan="2" scope="col" class="grp">Moyenne<br>par niveau</th>
+                    </tr>
+                    <tr>
+                        <th scope="col" class="grp">F</th><th scope="col">G</th><th scope="col">T</th>
+                        <th scope="col" class="grp">F</th><th scope="col">G</th><th scope="col">T</th>
+                        <th scope="col" class="grp">F</th><th scope="col">G</th><th scope="col">T</th><th scope="col">%</th>
+                        <th scope="col" class="grp">F</th><th scope="col">G</th><th scope="col">T</th><th scope="col">%</th>
+                        <th scope="col" class="grp">F</th><th scope="col">G</th><th scope="col">T</th><th scope="col">%</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for ligne in tableau_statistiques_niveaux %}
+                        <tr {% if ligne.is_total %}class="total-row{% if ligne.niveau|lower == "total général" %} total-general{% endif %}"{% endif %}>
+                            <th scope="row">{{ ligne.niveau }}</th>
+                            <td class="grp">{{ ligne.nombre_classes }}</td>
+                            <td class="grp">{{ ligne.classe_f }}</td>
+                            <td>{{ ligne.classe_g }}</td>
+                            <td>{{ ligne.classe_t }}</td>
+                            <td class="grp">{{ ligne.non_classe_f }}</td>
+                            <td>{{ ligne.non_classe_g }}</td>
+                            <td>{{ ligne.non_classe_t }}</td>
+                            <td class="grp">{{ ligne.sup10_f }}</td>
+                            <td>{{ ligne.sup10_g }}</td>
+                            <td>{{ ligne.sup10_t }}</td>
+                            <td>{{ ligne.sup10_pct|floatformat:1 }} %</td>
+                            <td class="grp">{{ ligne.moy_f }}</td>
+                            <td>{{ ligne.moy_g }}</td>
+                            <td>{{ ligne.moy_t }}</td>
+                            <td>{{ ligne.moy_pct|floatformat:1 }} %</td>
+                            <td class="grp">{{ ligne.inf_f }}</td>
+                            <td>{{ ligne.inf_g }}</td>
+                            <td>{{ ligne.inf_t }}</td>
+                            <td>{{ ligne.inf_pct|floatformat:1 }} %</td>
+                            <td class="grp moyenne">{{ ligne.moyenne_niveau|floatformat:2|default:"-" }}</td>
+                        </tr>
+                    {% empty %}
+                        <tr>
+                            <td colspan="21" class="empty-row">Aucune donnée pour les filtres sélectionnés.</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+    </section>
 
 </div>
 
+{% endblock %}
 
+
+{% block extra_script %}
+<script>
+(function () {
+    "use strict";
+
+    // ---- Filtres automatiques : les listes se valident au changement ----
+    var formulaire = document.getElementById("filterForm");
+    if (!formulaire) { return; }
+
+    formulaire.addEventListener("change", function (e) {
+        if (e.target.tagName !== "SELECT") { return; }
+
+        // Les classes proposées dépendent du niveau : on repart de « Toutes les classes ».
+        if (e.target.id === "niveau") {
+            var classe = document.getElementById("classe");
+            if (classe) { classe.value = ""; }
+        }
+        formulaire.submit();
+    });
+})();
+</script>
 {% endblock %}

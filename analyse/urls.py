@@ -60,7 +60,26 @@ urlpatterns = [
     path("bilan-annuel/",
         views.bilan_annuel, 
         name="bilan_annuel"
-    )
-    
+    ),
+    path("bilan-annuel/excel/",
+        views.exporter_bilan_annuel_excel, 
+        name="export_bilan_annuel_excel"
+    ),
+    path("bilan-annuel/pdf/", 
+        views.exporter_bilan_annuel_pdf,
+        name="export_bilan_annuel_pdf"
+    ),
+    path("bilan-trimestre/",
+        views.bilan_trimestre,
+        name="bilan_trimestre"
+        ),
+    path("bilan-trimestre/excel/",
+        views.exporter_bilan_trimestre_excel,
+        name="export_bilan_trimestre_excel"
+        ),
+    path("bilan-trimestre/pdf/",
+        views.exporter_bilan_trimestre_pdf,
+        name="export_bilan_trimestre_pdf"
+        )
 
 ]

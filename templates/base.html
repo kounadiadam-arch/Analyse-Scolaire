@@ -9,6 +9,9 @@
 
     <title>{% block title %}Analyse scolaire{% endblock %}</title>
 
+    <!-- Icône de l'onglet (évite aussi une requête /favicon.ico en erreur 404) -->
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%232f5bea'/%3E%3Cpath d='M8 24V15M14 24V8M20 24v-7M26 24H6' stroke='white' stroke-width='2.6' stroke-linecap='round' fill='none'/%3E%3C/svg%3E">
+
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -17,6 +20,7 @@
 
         /* =========================
            VARIABLES (design tokens)
+           Utilisées par toutes les pages : ne pas renommer.
         ========================= */
 
         :root {
@@ -37,6 +41,7 @@
             --shadow-md: 0 4px 16px rgba(16, 24, 40, 0.08);
 
             --sidebar-width: 256px;
+            --content-max-width: 1440px;
             --font: "Manrope", system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
         }
 
@@ -91,6 +96,35 @@
             border-radius: 6px;
         }
 
+        /* Texte réservé aux lecteurs d'écran */
+        .sr-only {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            overflow: hidden;
+            clip: rect(0 0 0 0);
+            white-space: nowrap;
+        }
+
+        /* Lien d'évitement : visible au clavier uniquement */
+        .skip-link {
+            position: absolute;
+            left: 12px;
+            top: -60px;
+            z-index: 100;
+            padding: 10px 16px;
+            background: var(--accent);
+            color: #fff;
+            font-weight: 700;
+            border-radius: 8px;
+            text-decoration: none;
+            transition: top 0.15s ease;
+        }
+
+        .skip-link:focus {
+            top: 12px;
+        }
+
 
         /* =========================
            STRUCTURE GENERALE
@@ -124,7 +158,7 @@
             display: flex;
             align-items: center;
             gap: 12px;
-            padding: 22px 20px 20px;
+            padding: 22px 20px 12px;
         }
 
         .brand-mark {
@@ -158,7 +192,17 @@
         }
 
         .sidebar nav {
-            padding: 6px 12px 20px;
+            padding: 0 12px 24px;
+        }
+
+        /* Titre d'un groupe de liens */
+        .nav-group-title {
+            margin: 16px 12px 6px;
+            font-size: 12px;
+            font-weight: 700;
+            letter-spacing: 0.06em;
+            text-transform: uppercase;
+            color: var(--text-muted);
         }
 
         .sidebar nav ul {
@@ -170,16 +214,21 @@
             gap: 2px;
         }
 
-        .sidebar nav a {
+        .sidebar nav a,
+        .sidebar nav .nav-disabled {
             display: flex;
             align-items: center;
             gap: 12px;
-            padding: 10px 12px;
-            color: var(--text-muted);
-            text-decoration: none;
+            min-height: 42px;
+            padding: 9px 12px;
+            border-radius: 8px;
             font-weight: 600;
             font-size: 14.5px;
-            border-radius: 8px;
+            text-decoration: none;
+        }
+
+        .sidebar nav a {
+            color: #475467;
             transition: background 0.15s ease, color 0.15s ease;
         }
 
@@ -190,30 +239,13 @@
 
         .sidebar nav a.active {
             background: var(--accent-soft);
-            color: var(--accent);
+            color: var(--accent-hover);
         }
 
+        /* Lien indisponible : grisé, avec la raison écrite à côté */
         .sidebar nav .nav-disabled {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            padding: 10px 12px;
-            border-radius: 8px;
             color: #98a2b3;
-            font-weight: 600;
-            font-size: 14.5px;
             cursor: not-allowed;
-        }
-
-        .sidebar nav .nav-hint {
-            margin-left: auto;
-            font-size: 11px;
-            font-weight: 600;
-            padding: 2px 7px;
-            border-radius: 999px;
-            background: var(--bg);
-            color: var(--text-muted);
-            white-space: nowrap;
         }
 
         .sidebar nav .menu-icon {
@@ -234,10 +266,15 @@
             stroke-linejoin: round;
         }
 
-        .sidebar nav .menu-separator {
-            height: 1px;
-            background: var(--border);
-            margin: 10px 4px;
+        .sidebar nav .nav-hint {
+            margin-left: auto;
+            padding: 2px 8px;
+            border-radius: 999px;
+            background: var(--bg);
+            color: var(--text-muted);
+            font-size: 12px;
+            font-weight: 600;
+            white-space: nowrap;
         }
 
 
@@ -258,6 +295,16 @@
             flex: 1;
             min-width: 0;
             padding: 36px 40px 48px;
+        }
+
+        .main-content:focus {
+            outline: none;
+        }
+
+        /* Largeur maximale : sur grand écran, le contenu reste lisible */
+        .page {
+            max-width: var(--content-max-width);
+            margin: 0 auto;
         }
 
 
@@ -305,8 +352,8 @@
             .menu-toggle {
                 display: grid;
                 place-items: center;
-                width: 40px;
-                height: 40px;
+                width: 44px;
+                height: 44px;
                 border: 1px solid var(--border);
                 border-radius: 8px;
                 background: var(--surface);
@@ -341,7 +388,7 @@
             }
 
             .sidebar nav {
-                padding-top: 12px;
+                padding-top: 4px;
             }
 
             .main-content {
@@ -364,7 +411,7 @@
 
 
         @media print {
-            .sidebar, .mobile-bar {
+            .sidebar, .mobile-bar, .skip-link {
                 display: none !important;
             }
 
@@ -386,6 +433,7 @@
 
 <body>
 
+<a class="skip-link" href="#contenu">Aller au contenu</a>
 
 <div class="app-layout">
 
@@ -402,16 +450,19 @@
             Analyse scolaire
         </div>
         <button type="button" class="menu-toggle" id="menu-toggle" aria-label="Ouvrir le menu" aria-expanded="false" aria-controls="sidebar">
-            <svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
         </button>
     </header>
 
 
     <!-- =========================
          MENU LATERAL
+         Le lien actif se repère avec request.resolver_match.url_name
+         (nécessite le context processor « request » de Django).
+         « bilan_disponible » est fourni par la fonction render de views.py.
     ========================= -->
 
-    <aside class="sidebar" id="sidebar">
+    <div class="sidebar" id="sidebar">
 
         <div class="sidebar-header">
             <span class="brand-mark" aria-hidden="true">
@@ -424,14 +475,18 @@
         </div>
 
         <nav aria-label="Navigation principale">
-            <ul>
+
+        {% with page_active=request.resolver_match.url_name %}
+
+            <!-- ----- Consultation ----- -->
+
+            <p class="nav-group-title" id="menu-consultation">Consultation</p>
+            <ul aria-labelledby="menu-consultation">
 
                 <li>
-                    <a
-                        href="{% url 'dashboard' %}"
-                        class="{% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}"
-                        {% if request.resolver_match.url_name == 'dashboard' %}aria-current="page"{% endif %}
-                    >
+                    <a href="{% url 'dashboard' %}"
+                       class="{% if page_active == 'dashboard' %}active{% endif %}"
+                       {% if page_active == 'dashboard' %}aria-current="page"{% endif %}>
                         <span class="menu-icon" aria-hidden="true">
                             <svg viewBox="0 0 24 24"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/><path d="M10 21v-6h4v6"/></svg>
                         </span>
@@ -440,11 +495,9 @@
                 </li>
 
                 <li>
-                    <a
-                        href="{% url 'resultats' %}"
-                        class="{% if request.resolver_match.url_name == 'resultats' %}active{% endif %}"
-                        {% if request.resolver_match.url_name == 'resultats' %}aria-current="page"{% endif %}
-                    >
+                    <a href="{% url 'resultats' %}"
+                       class="{% if page_active == 'resultats' %}active{% endif %}"
+                       {% if page_active == 'resultats' %}aria-current="page"{% endif %}>
                         <span class="menu-icon" aria-hidden="true">
                             <svg viewBox="0 0 24 24"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8M8 12h8M8 16h5"/></svg>
                         </span>
@@ -453,11 +506,27 @@
                 </li>
 
                 <li>
-                    <a
-                        href="{% url 'meilleurs_eleves' %}"
-                        class="{% if request.resolver_match.url_name == 'meilleurs_eleves' %}active{% endif %}"
-                        {% if request.resolver_match.url_name == 'meilleurs_eleves' %}aria-current="page"{% endif %}
-                    >
+                    <a href="{% url 'statistiques' %}"
+                       class="{% if page_active == 'statistiques' %}active{% endif %}"
+                       {% if page_active == 'statistiques' %}aria-current="page"{% endif %}>
+                        <span class="menu-icon" aria-hidden="true">
+                            <svg viewBox="0 0 24 24"><path d="m3 17 6-6 4 4 8-8"/><path d="M15 7h6v6"/></svg>
+                        </span>
+                        Statistiques
+                    </a>
+                </li>
+
+            </ul>
+
+            <!-- ----- Suivi des élèves ----- -->
+
+            <p class="nav-group-title" id="menu-eleves">Suivi des élèves</p>
+            <ul aria-labelledby="menu-eleves">
+
+                <li>
+                    <a href="{% url 'meilleurs_eleves' %}"
+                       class="{% if page_active == 'meilleurs_eleves' %}active{% endif %}"
+                       {% if page_active == 'meilleurs_eleves' %}aria-current="page"{% endif %}>
                         <span class="menu-icon" aria-hidden="true">
                             <svg viewBox="0 0 24 24"><path d="M8 21h8M12 17v4"/><path d="M7 4h10v5a5 5 0 0 1-10 0V4Z"/><path d="M7 6H4v1a3 3 0 0 0 3 3M17 6h3v1a3 3 0 0 1-3 3"/></svg>
                         </span>
@@ -466,11 +535,9 @@
                 </li>
 
                 <li>
-                    <a
-                        href="{% url 'eleves_a_suivre' %}"
-                        class="{% if request.resolver_match.url_name == 'eleves_a_suivre' %}active{% endif %}"
-                        {% if request.resolver_match.url_name == 'eleves_a_suivre' %}aria-current="page"{% endif %}
-                    >
+                    <a href="{% url 'eleves_a_suivre' %}"
+                       class="{% if page_active == 'eleves_a_suivre' %}active{% endif %}"
+                       {% if page_active == 'eleves_a_suivre' %}aria-current="page"{% endif %}>
                         <span class="menu-icon" aria-hidden="true">
                             <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1"/></svg>
                         </span>
@@ -479,11 +546,9 @@
                 </li>
 
                 <li>
-                    <a
-                        href="{% url 'fiche_eleve' %}"
-                        class="{% if request.resolver_match.url_name == 'fiche_eleve' %}active{% endif %}"
-                        {% if request.resolver_match.url_name == 'fiche_eleve' %}aria-current="page"{% endif %}
-                    >
+                    <a href="{% url 'fiche_eleve' %}"
+                       class="{% if page_active == 'fiche_eleve' %}active{% endif %}"
+                       {% if page_active == 'fiche_eleve' %}aria-current="page"{% endif %}>
                         <span class="menu-icon" aria-hidden="true">
                             <svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>
                         </span>
@@ -491,47 +556,45 @@
                     </a>
                 </li>
 
+            </ul>
+
+            <!-- ----- Bilans ----- -->
+
+            <p class="nav-group-title" id="menu-fin-annee">Bilans</p>
+            <ul aria-labelledby="menu-fin-annee">
+
                 <li>
-                    <a
-                        href="{% url 'statistiques' %}"
-                        class="{% if request.resolver_match.url_name == 'statistiques' %}active{% endif %}"
-                        {% if request.resolver_match.url_name == 'statistiques' %}aria-current="page"{% endif %}
-                    >
+                    <a href="{% url 'bilan_trimestre' %}"
+                       class="{% if page_active == 'bilan_trimestre' %}active{% endif %}"
+                       {% if page_active == 'bilan_trimestre' %}aria-current="page"{% endif %}>
                         <span class="menu-icon" aria-hidden="true">
-                            <svg viewBox="0 0 24 24"><path d="m3 17 6-6 4 4 8-8"/><path d="M15 7h6v6"/></svg>
+                            <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M8 2v4M16 2v4M3 10h18"/><path d="m9 16 2 2 4-4"/></svg>
                         </span>
-                        Statistiques
+                        Bilan de fin de trimestre
                     </a>
                 </li>
 
                 <li>
                     {% if bilan_disponible %}
-                    <a
-                        href="{% url 'bilan_annuel' %}"
-                        class="{% if request.resolver_match.url_name == 'bilan_annuel' %}active{% endif %}"
-                        {% if request.resolver_match.url_name == 'bilan_annuel' %}aria-current="page"{% endif %}
-                    >
+                    <a href="{% url 'bilan_annuel' %}"
+                       class="{% if page_active == 'bilan_annuel' %}active{% endif %}"
+                       {% if page_active == 'bilan_annuel' %}aria-current="page"{% endif %}>
                         <span class="menu-icon" aria-hidden="true">
                             <svg viewBox="0 0 24 24"><path d="M9 11l3 3 8-8"/><path d="M20 12v7a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h9"/></svg>
                         </span>
                         Bilan de fin d'année
                     </a>
                     {% else %}
-                    <span
-                        class="nav-disabled"
-                        aria-disabled="true"
-                        title="Disponible lorsque les moyennes des 3 trimestres sont enregistrées"
-                    >
+                    <span class="nav-disabled" aria-disabled="true" title="Disponible lorsque les moyennes des 3 trimestres sont enregistrées">
                         <span class="menu-icon" aria-hidden="true">
                             <svg viewBox="0 0 24 24"><path d="M9 11l3 3 8-8"/><path d="M20 12v7a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h9"/></svg>
                         </span>
                         Bilan de fin d'année
-                        <span class="nav-hint">après T3</span>
+                        <span class="nav-hint" aria-hidden="true">T1 à T3 requis</span>
+                        <span class="sr-only">Indisponible : disponible lorsque les moyennes des 3 trimestres sont enregistrées.</span>
                     </span>
                     {% endif %}
                 </li>
-
-                <li class="menu-separator" role="separator"></li>
 
                 <li>
                     <a href="{% url 'export_statistiques_excel' %}">
@@ -539,22 +602,29 @@
                             <svg viewBox="0 0 24 24"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M4 20h16"/></svg>
                         </span>
                         Rapports
+                        <span class="nav-hint">Excel</span>
+                        <span class="sr-only">(télécharge un fichier Excel)</span>
                     </a>
                 </li>
 
             </ul>
+
+        {% endwith %}
+
         </nav>
 
-    </aside>
+    </div>
 
 
     <!-- =========================
          CONTENU DE LA PAGE
     ========================= -->
 
-    <main class="main-content">
+    <main class="main-content" id="contenu" tabindex="-1">
 
-        {% block content %}{% endblock %}
+        <div class="page">
+            {% block content %}{% endblock %}
+        </div>
 
     </main>
 
@@ -568,10 +638,27 @@
         var sidebar = document.getElementById('sidebar');
         if (!toggle || !sidebar) return;
 
+        function definir(ouvert) {
+            sidebar.classList.toggle('is-open', ouvert);
+            toggle.setAttribute('aria-expanded', ouvert ? 'true' : 'false');
+            toggle.setAttribute('aria-label', ouvert ? 'Fermer le menu' : 'Ouvrir le menu');
+        }
+
         toggle.addEventListener('click', function () {
-            var open = sidebar.classList.toggle('is-open');
-            toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
-            toggle.setAttribute('aria-label', open ? 'Fermer le menu' : 'Ouvrir le menu');
+            definir(!sidebar.classList.contains('is-open'));
+        });
+
+        // Échap referme le menu et rend le focus au bouton
+        document.addEventListener('keydown', function (e) {
+            if (e.key === 'Escape' && sidebar.classList.contains('is-open')) {
+                definir(false);
+                toggle.focus();
+            }
+        });
+
+        // Retour en affichage large : on remet l'état du menu à zéro
+        window.matchMedia('(min-width: 901px)').addEventListener('change', function (e) {
+            if (e.matches) definir(false);
         });
     })();
 </script>
