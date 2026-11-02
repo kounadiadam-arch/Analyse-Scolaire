@@ -1,0 +1,713 @@
+{% extends "base.html" %}
+
+{% block title %}Rapport trimestriel — Analyse scolaire{% endblock %}
+
+
+{% block extra_style %}
+<style>
+
+    /* =====================================================
+       Toutes les règles sont limitées à .dash : plus aucun
+       style global (button, table, th, td, h1, body…) ne
+       déborde sur le menu ou sur les autres pages.
+       Les couleurs viennent des variables de base.html.
+    ===================================================== */
+
+    .dash {
+        --d-surface: var(--surface, #fff);
+        --d-bg: var(--bg, #f5f6f8);
+        --d-border: var(--border, #e4e7ec);
+        --d-border-strong: var(--border-strong, #d0d5dd);
+        --d-text: var(--text, #1d2433);
+        --d-muted: var(--text-muted, #667085);
+        --d-accent: var(--accent, #2f5bea);
+        --d-accent-hover: var(--accent-hover, #2449c7);
+        --d-accent-soft: var(--accent-soft, #eaf0ff);
+        --d-radius: var(--radius, 10px);
+
+        --ok: #0b6b2f;      --ok-bg: #e7f6ec;
+        --warn: #93370d;    --warn-bg: #fef0c7;
+        --bad: #b42318;     --bad-bg: #fdecea;
+        --info: #1e40af;    --info-bg: #e8effe;
+        --neutral: #475467; --neutral-bg: #eef0f3;
+    }
+
+    .dash h1 {
+        margin: 0 0 4px;
+    }
+
+    .dash h2 {
+        margin: 0;
+        font-size: 18px;
+    }
+
+    .dash h3 {
+        margin: 0;
+        font-size: 15px;
+        font-weight: 700;
+    }
+
+    .dash .sr-only {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        overflow: hidden;
+        clip: rect(0 0 0 0);
+        white-space: nowrap;
+    }
+
+    .dash .muted {
+        color: var(--d-muted);
+    }
+
+    /* ---------- En-tête de page ---------- */
+
+    .dash-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-end;
+        gap: 16px;
+        flex-wrap: wrap;
+        margin-bottom: 24px;
+    }
+
+    .dash-subtitle {
+        margin: 0;
+        color: var(--d-muted);
+    }
+
+    /* ---------- Panneaux ---------- */
+
+    .dash .panel {
+        background: var(--d-surface);
+        border: 1px solid var(--d-border);
+        border-radius: var(--d-radius);
+        padding: 20px 22px;
+        margin-bottom: 20px;
+    }
+
+    .dash .panel-head {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 12px;
+        flex-wrap: wrap;
+        margin-bottom: 16px;
+    }
+
+    .dash .panel-head-tight {
+        margin-bottom: 12px;
+    }
+
+    .dash .section-note {
+        margin: 4px 0 0;
+        font-size: 13.5px;
+        color: var(--d-muted);
+    }
+
+    /* ---------- Boutons ---------- */
+
+    .dash .btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        min-height: 40px;
+        padding: 8px 16px;
+        font: inherit;
+        font-size: 14px;
+        font-weight: 700;
+        border: 1px solid transparent;
+        border-radius: 8px;
+        cursor: pointer;
+        text-decoration: none;
+        white-space: nowrap;
+        transition: background 0.15s ease, border-color 0.15s ease;
+    }
+
+    .dash .btn-primary {
+        background: var(--d-accent);
+        color: #fff;
+    }
+
+    .dash .btn-primary:hover {
+        background: var(--d-accent-hover);
+    }
+
+    .dash .btn-secondary {
+        background: var(--d-surface);
+        color: var(--d-accent);
+        border-color: var(--d-accent);
+    }
+
+    .dash .btn-secondary:hover {
+        background: var(--d-accent-soft);
+    }
+
+    .dash .btn:disabled {
+        opacity: 0.55;
+        cursor: not-allowed;
+    }
+
+    .dash .btn-link {
+        color: var(--d-muted);
+        font-weight: 600;
+        font-size: 14px;
+        text-decoration: none;
+        padding: 8px 4px;
+    }
+
+    .dash .btn-link:hover {
+        color: var(--d-text);
+        text-decoration: underline;
+    }
+
+    .dash .btn svg {
+        width: 17px;
+        height: 17px;
+        stroke: currentColor;
+        fill: none;
+        stroke-width: 2;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+    }
+
+    /* ---------- Filtres ---------- */
+
+    .filters-form {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 14px;
+    }
+
+    .filters-form .field-search {
+        grid-column: 1 / -1;
+    }
+
+    .filters-form label {
+        display: block;
+        margin-bottom: 5px;
+        font-size: 13px;
+        font-weight: 700;
+        color: var(--d-muted);
+    }
+
+    .filters-form select,
+    .filters-form input[type="search"] {
+        width: 100%;
+        min-height: 42px;
+        padding: 9px 12px;
+        font: inherit;
+        font-size: 14.5px;
+        color: var(--d-text);
+        background: var(--d-surface);
+        border: 1px solid var(--d-border-strong);
+        border-radius: 8px;
+    }
+
+    .filters-form select:focus,
+    .filters-form input[type="search"]:focus {
+        outline: 2px solid var(--d-accent);
+        outline-offset: 1px;
+        border-color: var(--d-accent);
+    }
+
+    .active-filters {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 8px;
+        margin-top: 16px;
+        padding-top: 14px;
+        border-top: 1px solid var(--d-border);
+    }
+
+    .active-filters .label {
+        font-size: 13px;
+        font-weight: 700;
+        color: var(--d-muted);
+    }
+
+    .filter-badge {
+        display: inline-flex;
+        padding: 4px 10px;
+        border-radius: 999px;
+        background: var(--d-accent-soft);
+        color: var(--d-accent-hover);
+        font-size: 13px;
+        font-weight: 700;
+    }
+
+    /* ---------- Pages « Rapport trimestriel » et « Rapport annuel » ---------- */
+
+    .back-link { margin: 0 0 6px; font-size: 13.5px; font-weight: 600; }
+
+    .periode-state {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 8px 10px;
+        margin-bottom: 20px;
+        font-size: 14px;
+    }
+
+    .periode-state .label {
+        font-weight: 700;
+        color: var(--d-muted);
+    }
+
+    .pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 4px 12px;
+        border-radius: 999px;
+        font-size: 13px;
+        font-weight: 700;
+    }
+
+    .pill svg {
+        width: 14px;
+        height: 14px;
+        stroke: currentColor;
+        fill: none;
+        stroke-width: 2.6;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+    }
+
+    .pill-ok  { background: var(--ok-bg);      color: var(--ok); }
+    .pill-off { background: var(--neutral-bg); color: var(--neutral); }
+
+    .report-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(310px, 1fr));
+        gap: 16px;
+        margin-bottom: 20px;
+    }
+
+    .report-card {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        margin: 0 !important;
+        min-width: 0;
+    }
+
+    .report-head {
+        display: flex;
+        align-items: flex-start;
+        gap: 14px;
+    }
+
+    .report-icon {
+        flex-shrink: 0;
+        width: 44px;
+        height: 44px;
+        display: grid;
+        place-items: center;
+        border-radius: 12px;
+        background: var(--d-accent-soft);
+        color: var(--d-accent-hover);
+    }
+
+    .report-icon svg {
+        width: 23px;
+        height: 23px;
+        stroke: currentColor;
+        fill: none;
+        stroke-width: 1.8;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+    }
+
+    .report-card h2 {
+        font-size: 17px;
+    }
+
+    .report-lead {
+        margin: 3px 0 0;
+        color: var(--d-muted);
+        font-size: 13.5px;
+    }
+
+    .report-list {
+        margin: 0;
+        padding-left: 20px;
+        font-size: 14px;
+        flex: 1;
+    }
+
+    .report-list li {
+        margin-bottom: 3px;
+    }
+
+    .report-meta {
+        margin: 0;
+        padding: 8px 12px;
+        border-radius: 8px;
+        background: var(--d-bg);
+        color: var(--d-text);
+        font-size: 13.5px;
+        font-weight: 600;
+    }
+
+    .report-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        padding-top: 4px;
+    }
+
+    .report-actions .btn {
+        min-height: 38px;
+        padding: 7px 14px;
+        font-size: 13.5px;
+    }
+
+    .btn-ghost {
+        background: transparent;
+        color: var(--d-muted);
+        border-color: transparent;
+    }
+
+    .btn-ghost:hover {
+        color: var(--d-accent);
+        background: var(--d-accent-soft);
+    }
+
+    /* Liste d'exports à l'intérieur d'une carte (une ligne par liste) */
+
+    .export-rows {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        margin: 0;
+        padding: 0;
+        list-style: none;
+        flex: 1;
+    }
+
+    .export-rows li {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        flex-wrap: wrap;
+        padding: 10px 12px;
+        border: 1px solid var(--d-border);
+        border-radius: 8px;
+        background: var(--d-bg);
+    }
+
+    .export-rows .row-title {
+        font-weight: 700;
+        font-size: 14px;
+    }
+
+    .export-rows .row-count {
+        display: block;
+        font-weight: 500;
+        font-size: 12.5px;
+        color: var(--d-muted);
+    }
+
+    .export-rows .row-actions {
+        display: flex;
+        gap: 6px;
+    }
+
+    .row-actions .btn {
+        min-height: 34px;
+        padding: 5px 12px;
+        font-size: 13px;
+    }
+
+    .row-actions .btn.is-off {
+        opacity: 0.5;
+        cursor: not-allowed;
+        pointer-events: none;
+    }
+
+    .waiting {
+        text-align: center;
+        padding: 48px 24px;
+    }
+
+    .waiting h2 { font-size: 20px; }
+
+    .waiting p {
+        max-width: 54ch;
+        margin: 8px auto;
+        color: var(--d-muted);
+    }
+
+    .steps {
+        display: flex;
+        justify-content: center;
+        gap: 12px;
+        margin: 20px 0;
+        flex-wrap: wrap;
+    }
+
+    .step {
+        padding: 8px 18px;
+        border-radius: 999px;
+        border: 1px solid var(--d-border-strong);
+        color: var(--d-muted);
+        font-size: 14px;
+        font-weight: 700;
+    }
+
+    .step.done {
+        background: var(--ok-bg);
+        border-color: var(--ok-bg);
+        color: var(--ok);
+    }
+
+    .notice {
+        padding: 14px 16px;
+        margin-bottom: 20px;
+        border-radius: 8px;
+        background: var(--warn-bg);
+        color: var(--warn);
+        font-size: 14.5px;
+        font-weight: 600;
+    }
+
+    @media (max-width: 1100px) {
+        .filters-form { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+
+    @media (max-width: 600px) {
+        .filters-form { grid-template-columns: 1fr; }
+        .dash .panel { padding: 16px; }
+        .report-grid { grid-template-columns: 1fr; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        .dash * { transition: none !important; animation: none !important; }
+    }
+
+    @media print {
+        .filters-panel, .btn { display: none !important; }
+    }
+
+</style>
+
+{% endblock %}
+
+
+{% block content %}
+
+<div class="dash">
+
+    <header class="dash-header">
+        <div>
+            <h1>Rapport trimestriel</h1>
+            <p class="dash-subtitle">Choisissez une période, puis exportez les rapports généraux du trimestre.</p>
+        </div>
+    </header>
+
+
+{% if indisponible %}
+
+    <section class="panel waiting" aria-labelledby="titre-attente">
+        <h2 id="titre-attente">Aucun trimestre importé</h2>
+        <p>Le rapport trimestriel est disponible dès qu'une moyenne trimestrielle est enregistrée. Importez les résultats depuis l'accueil.</p>
+        <a href="{% url 'dashboard' %}" class="btn btn-primary">Aller à l'accueil pour importer</a>
+    </section>
+
+{% else %}
+
+    <!-- =========================
+         PÉRIODE ET FILTRES
+    ========================= -->
+
+    <section class="panel filters-panel" aria-labelledby="titre-filtres">
+
+        <div class="panel-head">
+            <h2 id="titre-filtres">Période du rapport</h2>
+
+            {% if niveau or classe_id %}
+                <a href="{% url 'rapport_trimestriel' %}?annee={{ annee.id }}&amp;trimestre={{ trimestre }}" class="btn-link">↺ Retirer le niveau et la classe</a>
+            {% endif %}
+        </div>
+
+        <!-- Le formulaire s'envoie automatiquement dès qu'un champ change -->
+        <form method="get" id="filterForm" class="filters-form">
+
+            <div>
+                <label for="annee">Année scolaire</label>
+                <select name="annee" id="annee">
+                    {% for a in annees %}
+                        <option value="{{ a.id }}" {% if a.id == annee.id %}selected{% endif %}>{{ a.nom }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div>
+                <label for="trimestre">Trimestre</label>
+                <select name="trimestre" id="trimestre">
+                    {% for t in trimestres %}
+                        {% if t.importe %}
+                            <option value="{{ t.code }}" {% if t.code == trimestre %}selected{% endif %}>{{ t.libelle }}</option>
+                        {% endif %}
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div>
+                <label for="niveau">Niveau</label>
+                <select name="niveau" id="niveau">
+                    <option value="">Tous les niveaux</option>
+                    {% for n in niveaux %}
+                        <option value="{{ n }}" {% if n == niveau %}selected{% endif %}>{{ n }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div>
+                <label for="classe">Classe</label>
+                <select name="classe" id="classe">
+                    <option value="">Toutes les classes</option>
+                    {% for c in classes %}
+                        <option value="{{ c.id }}" {% if c.id|stringformat:"s" == classe_id %}selected{% endif %}>{{ c.nom }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <noscript>
+                <button type="submit" class="btn btn-primary">Appliquer</button>
+            </noscript>
+
+        </form>
+
+        <div class="active-filters">
+            <span class="label">Trimestres importés pour {{ annee.nom }} :</span>
+            {% for t in trimestres %}
+                {% if t.importe %}
+                    <span class="pill pill-ok"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 5 5 9-10"/></svg>{{ t.code }}</span>
+                {% else %}
+                    <span class="pill pill-off">{{ t.code }} non importé</span>
+                {% endif %}
+            {% endfor %}
+        </div>
+
+    </section>
+
+
+    <!-- =========================
+         RAPPORTS GÉNÉRAUX
+    ========================= -->
+
+    <div class="report-grid">
+
+        <section class="panel report-card" aria-labelledby="rt-bilan">
+            <div class="report-head">
+                <span class="report-icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M8 2v4M16 2v4M3 10h18"/><path d="m9 16 2 2 4-4"/></svg>
+                </span>
+                <div>
+                    <h2 id="rt-bilan">Bilan de fin de trimestre</h2>
+                    <p class="report-lead">{{ trimestre_libelle }} — {{ annee.nom }}</p>
+                </div>
+            </div>
+
+            <ul class="report-list">
+                <li>Moyenne, rang et évolution de chaque élève</li>
+                <li>Synthèse par classe et par tranche de moyenne</li>
+                <li>Moyennes par matière (Excel)</li>
+            </ul>
+
+            <p class="report-meta">
+                {{ synthese.total }} élève{{ synthese.total|pluralize }} classé{{ synthese.total|pluralize }}{% if synthese.non_classes %} · {{ synthese.non_classes }} non classé{{ synthese.non_classes|pluralize }}{% endif %}
+            </p>
+
+            <div class="report-actions">
+                <a class="btn btn-primary" href="{% url 'export_bilan_trimestre_excel' %}?{{ querystring }}">Excel</a>
+                <a class="btn btn-secondary" href="{% url 'export_bilan_trimestre_pdf' %}?{{ querystring }}">PDF</a>
+                <a class="btn btn-ghost" href="{% url 'bilan_trimestre' %}?{{ querystring }}">Consulter</a>
+            </div>
+        </section>
+
+        <section class="panel report-card" aria-labelledby="rt-stats">
+            <div class="report-head">
+                <span class="report-icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24"><path d="m3 17 6-6 4 4 8-8"/><path d="M15 7h6v6"/></svg>
+                </span>
+                <div>
+                    <h2 id="rt-stats">Rapport statistique général</h2>
+                    <p class="report-lead">{{ trimestre_libelle }} — {{ annee.nom }}</p>
+                </div>
+            </div>
+
+            <ul class="report-list">
+                <li>Résumé et classement des élèves</li>
+                <li>Statistiques par niveau et tranches de moyenne</li>
+                <li>Effectifs, affectés et redoublants</li>
+            </ul>
+
+            <div class="report-actions">
+                <a class="btn btn-primary" href="{% url 'export_statistiques_excel' %}?{{ querystring }}">Excel</a>
+                <a class="btn btn-ghost" href="{% url 'statistiques' %}?{{ querystring }}">Consulter</a>
+            </div>
+        </section>
+
+        <section class="panel report-card" aria-labelledby="rt-suivre">
+            <div class="report-head">
+                <span class="report-icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1"/></svg>
+                </span>
+                <div>
+                    <h2 id="rt-suivre">Élèves à suivre</h2>
+                    <p class="report-lead">Moyenne inférieure à 10 — {{ trimestre_libelle }}</p>
+                </div>
+            </div>
+
+            <ul class="report-list">
+                <li>Liste des élèves sous la moyenne, du plus faible au plus élevé</li>
+                <li>Moyennes par matière de chaque élève</li>
+            </ul>
+
+            <div class="report-actions">
+                <a class="btn btn-primary" href="{% url 'export_eleves_sous_10_excel' %}?{{ querystring }}">Excel</a>
+                <a class="btn btn-ghost" href="{% url 'eleves_a_suivre' %}?{{ querystring }}">Consulter</a>
+            </div>
+        </section>
+
+    </div>
+
+{% endif %}
+
+</div>
+
+{% endblock %}
+
+
+{% block extra_script %}
+<script>
+(function () {
+    "use strict";
+
+    var formulaire = document.getElementById("filterForm");
+    if (!formulaire) { return; }
+
+    formulaire.addEventListener("change", function (e) {
+        if (e.target.tagName !== "SELECT") { return; }
+
+        // Les classes proposées dépendent du niveau : on repart de « Toutes les classes ».
+        if (e.target.id === "niveau") {
+            var classe = document.getElementById("classe");
+            if (classe) { classe.value = ""; }
+        }
+        // Changer d'année : le trimestre est choisi à nouveau par défaut.
+        if (e.target.id === "annee") {
+            var trim = document.getElementById("trimestre");
+            if (trim) { trim.value = ""; }
+        }
+        formulaire.submit();
+    });
+})();
+</script>
+{% endblock %}

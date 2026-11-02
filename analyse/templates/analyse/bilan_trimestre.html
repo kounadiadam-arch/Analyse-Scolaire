@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}Bilan de fin de trimestre — Analyse scolaire{% endblock %}
+{% block title %}Rapport trimestriel — Analyse scolaire{% endblock %}
 
 
 {% block extra_style %}
@@ -69,6 +69,22 @@
         gap: 16px;
         flex-wrap: wrap;
         margin-bottom: 24px;
+    }
+
+    .back-link {
+        margin: 0 0 6px;
+        font-size: 13.5px;
+        font-weight: 600;
+    }
+
+    .back-link a {
+        color: var(--d-muted);
+        text-decoration: none;
+    }
+
+    .back-link a:hover {
+        color: var(--d-accent);
+        text-decoration: underline;
     }
 
     .dash-subtitle {
@@ -834,6 +850,14 @@
         font-weight: 700;
     }
 
+    .classement-table thead th.band-ok   { border-top: 3px solid #16a34a; }
+    .classement-table thead th.band-warn { border-top: 3px solid #f59e0b; }
+    .classement-table thead th.band-bad  { border-top: 3px solid #dc2626; }
+
+    .pct-ok   { color: var(--ok); }
+    .pct-warn { color: var(--warn); }
+    .pct-bad  { color: var(--bad); }
+
     .synthese-classes {
         margin-bottom: 20px;
     }
@@ -848,8 +872,9 @@
 
     <header class="dash-header">
         <div>
-            <h1>Bilan de fin de trimestre</h1>
-            <p class="dash-subtitle">Moyenne, rang, évolution et situation de chaque élève, avec la synthèse par classe.</p>
+            <p class="back-link"><a href="{% url 'rapport_trimestriel' %}">← Rapport trimestriel : tous les exports</a></p>
+            <h1>Rapport trimestriel</h1>
+            <p class="dash-subtitle">Bilan de fin de trimestre : moyenne, rang, évolution et situation de chaque élève, avec la synthèse par classe.</p>
         </div>
     </header>
 
@@ -1012,7 +1037,16 @@
         <div class="panel-head panel-head-tight">
             <div>
                 <h2 id="titre-classes">Synthèse par classe</h2>
-                <p class="section-note">{{ trimestre_libelle }} — {{ annee.nom }}. Réussite : moyenne de {{ seuil_passage }} ou plus.</p>
+                <p class="section-note">{{ trimestre_libelle }} — {{ annee.nom }}. Répartition des élèves classés par tranche de moyenne.</p>
+            </div>
+
+            <!-- Le PDF reprend l'année, le trimestre, le niveau et la classe choisis -->
+            <div class="table-actions">
+                <a class="btn btn-secondary"
+                   href="{% url 'export_bilan_trimestre_pdf' %}?annee={{ annee.id }}&amp;trimestre={{ trimestre|urlencode }}&amp;niveau={{ niveau|urlencode }}&amp;classe={{ classe_id|urlencode }}">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M4 20h16"/></svg>
+                    Exporter en PDF
+                </a>
             </div>
         </div>
 
@@ -1024,7 +1058,9 @@
                         <th scope="col">Classe</th>
                         <th scope="col" class="col-num">Effectif classé</th>
                         <th scope="col" class="col-num">Moyenne</th>
-                        <th scope="col" class="col-num">Réussite</th>
+                        <th scope="col" class="col-num band-ok">10 ou plus</th>
+                        <th scope="col" class="col-num band-warn">8,50 à moins de 10</th>
+                        <th scope="col" class="col-num band-bad">Moins de 8,50</th>
                         <th scope="col">Meilleure moyenne</th>
                         <th scope="col">Plus faible moyenne</th>
                     </tr>
@@ -1035,7 +1071,9 @@
                             <th scope="row" class="th-simple">{{ g.classe.nom }}</th>
                             <td class="col-num">{{ g.effectif }}</td>
                             <td class="col-num moyenne {% if g.moyenne < seuil_passage %}low-average{% endif %}">{{ g.moyenne|floatformat:2 }}</td>
-                            <td class="col-num">{{ g.taux_reussite|floatformat:1 }} %</td>
+                            <td class="col-num"><strong class="pct-ok">{{ g.reussite_pct|floatformat:1 }} %</strong> <span class="muted">({{ g.reussite }})</span></td>
+                            <td class="col-num"><strong class="pct-warn">{{ g.surveiller_pct|floatformat:1 }} %</strong> <span class="muted">({{ g.surveiller }})</span></td>
+                            <td class="col-num"><strong class="pct-bad">{{ g.difficulte_pct|floatformat:1 }} %</strong> <span class="muted">({{ g.difficulte }})</span></td>
                             <td><strong>{{ g.meilleur.moyenne|floatformat:2 }}</strong> <span class="muted">— {{ g.meilleur.eleve.nom }} {{ g.meilleur.eleve.prenoms }}</span></td>
                             <td><strong class="{% if g.plus_faible.moyenne < seuil_passage %}low-average{% endif %}">{{ g.plus_faible.moyenne|floatformat:2 }}</strong> <span class="muted">— {{ g.plus_faible.eleve.nom }} {{ g.plus_faible.eleve.prenoms }}</span></td>
                         </tr>
@@ -1068,10 +1106,6 @@
                     <a class="btn btn-secondary" href="{% url 'export_bilan_trimestre_excel' %}?{{ querystring }}">
                         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M4 20h16"/></svg>
                         Exporter en Excel
-                    </a>
-                    <a class="btn btn-secondary" href="{% url 'export_bilan_trimestre_pdf' %}?{{ querystring }}">
-                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M4 20h16"/></svg>
-                        Exporter en PDF
                     </a>
                 </div>
             {% endif %}

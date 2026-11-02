@@ -994,6 +994,11 @@
                         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M4 20h16"/></svg>
                         Exporter en Excel
                     </a>
+
+                    <a href="{% url 'export_eleves_sous_10_pdf' %}{% if querystring %}?{{ querystring }}{% endif %}" class="btn btn-secondary">
+                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M4 20h16"/></svg>
+                        Exporter en PDF
+                    </a>
                 {% endif %}
             </div>
         </div>

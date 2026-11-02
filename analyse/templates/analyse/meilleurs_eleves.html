@@ -770,7 +770,24 @@
 
         <div class="panel-head">
             <h2 id="titre-classement">Classement des meilleurs élèves</h2>
-            {% if meilleurs_eleves %}<span class="count-badge">Top {{ meilleurs_eleves|length }}</span>{% endif %}
+            {% if meilleurs_eleves %}
+                <div class="table-actions">
+                    <span class="count-badge">Top {{ meilleurs_eleves|length }}</span>
+
+                    <!-- Les exports reprennent les filtres affichés (année, niveau, classe, trimestre) -->
+                    <a href="{% url 'export_meilleurs_eleves_excel' %}?annee={{ annee_selectionnee|default:''|urlencode }}&amp;niveau={{ niveau_selectionne|default:''|urlencode }}&amp;classe={{ classe_selectionnee|default:''|urlencode }}&amp;trimestre={{ trimestre_selectionne|default:''|urlencode }}"
+                       class="btn btn-secondary">
+                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M4 20h16"/></svg>
+                        Exporter en Excel
+                    </a>
+
+                    <a href="{% url 'export_meilleurs_eleves_pdf' %}?annee={{ annee_selectionnee|default:''|urlencode }}&amp;niveau={{ niveau_selectionne|default:''|urlencode }}&amp;classe={{ classe_selectionnee|default:''|urlencode }}&amp;trimestre={{ trimestre_selectionne|default:''|urlencode }}"
+                       class="btn btn-secondary">
+                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M4 20h16"/></svg>
+                        Exporter en PDF
+                    </a>
+                </div>
+            {% endif %}
         </div>
 
         {% if meilleurs_eleves %}

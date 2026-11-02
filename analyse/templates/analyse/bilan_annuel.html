@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}Bilan de fin d'année — Analyse scolaire{% endblock %}
+{% block title %}Rapport annuel — Analyse scolaire{% endblock %}
 
 
 {% block extra_style %}
@@ -69,6 +69,22 @@
         gap: 16px;
         flex-wrap: wrap;
         margin-bottom: 24px;
+    }
+
+    .back-link {
+        margin: 0 0 6px;
+        font-size: 13.5px;
+        font-weight: 600;
+    }
+
+    .back-link a {
+        color: var(--d-muted);
+        text-decoration: none;
+    }
+
+    .back-link a:hover {
+        color: var(--d-accent);
+        text-decoration: underline;
     }
 
     .dash-subtitle {
@@ -772,8 +788,9 @@
 
     <header class="dash-header">
         <div>
-            <h1>Bilan de fin d'année</h1>
-            <p class="dash-subtitle">Moyennes annuelles par matière, moyenne générale et décision pour chaque élève.</p>
+            <p class="back-link"><a href="{% url 'rapport_annuel' %}">← Rapport annuel : tous les exports</a></p>
+            <h1>Rapport annuel</h1>
+            <p class="dash-subtitle">Bilan de fin d'année : moyennes annuelles par matière, moyenne générale et décision pour chaque élève.</p>
         </div>
     </header>
 
@@ -785,9 +802,9 @@
     ========================= -->
 
     <section class="panel waiting" aria-labelledby="titre-attente">
-        <h2 id="titre-attente">Le bilan n'est pas encore disponible</h2>
+        <h2 id="titre-attente">Le rapport annuel n'est pas encore disponible</h2>
         <p>
-            Il se calcule lorsque les moyennes des trois trimestres sont enregistrées.
+            Il n'est disponible que lorsque les trois trimestres (T1, T2 et T3) sont importés.
             Importez les résultats manquants depuis l'accueil.
         </p>
 

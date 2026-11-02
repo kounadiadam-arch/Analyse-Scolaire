@@ -260,6 +260,30 @@
         border-bottom: none;
     }
 
+    table.data tfoot th,
+    table.data tfoot td {
+        background: var(--accent-soft);
+        color: var(--text);
+        font-size: 14.5px;
+        border-bottom: 1px solid var(--border);
+    }
+
+    table.data tfoot th {
+        text-align: left;
+        font-weight: 700;
+        white-space: nowrap;
+    }
+
+    table.data tfoot tr:first-child th,
+    table.data tfoot tr:first-child td {
+        border-top: 2px solid var(--accent);
+    }
+
+    table.data tfoot tr:last-child th,
+    table.data tfoot tr:last-child td {
+        border-bottom: none;
+    }
+
     .note {
         font-weight: 700;
     }
@@ -612,74 +636,6 @@
         </div>
 
 
-        <!-- ===== Moyennes trimestrielles ===== -->
-
-        <section class="panel">
-
-            <h2>Moyennes trimestrielles</h2>
-            <p class="panel-note">
-                L'évolution compare chaque trimestre au précédent. Pour le rang,
-                « + » signifie que l'élève a gagné des places.
-            </p>
-
-            <div class="table-wrap">
-                <table class="data">
-                    <thead>
-                        <tr>
-                            <th>Trimestre</th>
-                            <th>Classe</th>
-                            <th class="num">Moyenne</th>
-                            <th class="num">Évolution</th>
-                            <th class="num">Rang dans la classe</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for l in lignes_trimestres %}
-                        <tr>
-                            <td>{{ l.libelle }}</td>
-                            <td>{% if l.classe %}{{ l.classe }}{% else %}<span class="vide">—</span>{% endif %}</td>
-                            <td class="num">
-                                {% if l.moyenne is not None %}
-                                    <span class="note {% if l.moyenne < seuil_reussite %}note-faible{% endif %}">{{ l.moyenne|floatformat:2 }}</span>
-                                {% elif l.present %}
-                                    <span class="vide">Non classé</span>
-                                {% else %}
-                                    <span class="vide">—</span>
-                                {% endif %}
-                            </td>
-                            <td class="num">
-                                {% if l.sens %}
-                                    <span class="delta delta-{{ l.sens }}">
-                                        {% if l.sens == 'hausse' %}▲ +{% elif l.sens == 'baisse' %}▼ {% else %}= {% endif %}{{ l.ecart|floatformat:2 }}
-                                    </span>
-                                    <span class="vide" style="font-size:12.5px;">vs {{ l.reference }}</span>
-                                {% else %}
-                                    <span class="vide">—</span>
-                                {% endif %}
-                            </td>
-                            <td class="num">
-                                {% if l.rang %}
-                                    <div class="cell-stack">
-                                        <span class="note">{% if l.rang == 1 %}1er{% else %}{{ l.rang }}e{% endif %}{% if l.effectif %} <span class="vide" style="font-weight:500;">/ {{ l.effectif }}</span>{% endif %}</span>
-                                        {% if l.sens_rang %}
-                                            <span class="delta delta-{{ l.sens_rang }}">
-                                                {% if l.sens_rang == 'hausse' %}▲ +{{ l.places_gagnees }} place{{ l.places_gagnees|pluralize }}{% elif l.sens_rang == 'baisse' %}▼ {{ l.places_gagnees }} place{{ l.places_gagnees|pluralize }}{% else %}= même rang{% endif %}
-                                            </span>
-                                        {% endif %}
-                                    </div>
-                                {% else %}
-                                    <span class="vide">—</span>
-                                {% endif %}
-                            </td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-
-        </section>
-
-
         <!-- ===== Graphique ===== -->
 
         <section class="panel">
@@ -691,16 +647,16 @@
         </section>
 
 
-        <!-- ===== Moyennes par matière ===== -->
+        <!-- ===== Moyennes par matière (+ moyenne trimestrielle et rang en fin de tableau) ===== -->
 
         <section class="panel">
 
             <h2>Moyennes par matière</h2>
             <p class="panel-note">
-                Les badges indiquent l'évolution par rapport au trimestre précédent.
+                Les badges indiquent l'évolution par rapport au trimestre précédent ;
+                pour le rang, « + » signifie que l'élève a gagné des places.
             </p>
 
-            {% if lignes_matieres %}
             <div class="table-wrap">
                 <table class="data">
                     <thead>
@@ -732,13 +688,58 @@
                             </td>
                             {% endfor %}
                         </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="4" class="vide">Aucune moyenne par matière n'est enregistrée pour cette année.</td>
+                        </tr>
                         {% endfor %}
                     </tbody>
+
+                    <!-- Sous chaque trimestre : moyenne trimestrielle puis rang dans la classe -->
+                    <tfoot>
+                        <tr>
+                            <th scope="row">Moyenne trimestrielle</th>
+                            {% for l in lignes_trimestres %}
+                            <td class="num">
+                                {% if l.moyenne is not None %}
+                                    <div class="cell-stack">
+                                        <span class="note {% if l.moyenne < seuil_reussite %}note-faible{% endif %}">{{ l.moyenne|floatformat:2 }}</span>
+                                        {% if l.sens %}
+                                            <span class="delta delta-{{ l.sens }}">
+                                                {% if l.sens == 'hausse' %}▲ +{% elif l.sens == 'baisse' %}▼ {% else %}= {% endif %}{{ l.ecart|floatformat:2 }}
+                                            </span>
+                                        {% endif %}
+                                    </div>
+                                {% elif l.present %}
+                                    <span class="vide">Non classé</span>
+                                {% else %}
+                                    <span class="vide">—</span>
+                                {% endif %}
+                            </td>
+                            {% endfor %}
+                        </tr>
+                        <tr>
+                            <th scope="row">Rang dans la classe</th>
+                            {% for l in lignes_trimestres %}
+                            <td class="num">
+                                {% if l.rang %}
+                                    <div class="cell-stack">
+                                        <span class="note">{% if l.rang == 1 %}1er{% else %}{{ l.rang }}e{% endif %}{% if l.effectif %} <span class="vide" style="font-weight:500;">/ {{ l.effectif }}</span>{% endif %}</span>
+                                        {% if l.sens_rang %}
+                                            <span class="delta delta-{{ l.sens_rang }}">
+                                                {% if l.sens_rang == 'hausse' %}▲ +{{ l.places_gagnees }} place{{ l.places_gagnees|pluralize }}{% elif l.sens_rang == 'baisse' %}▼ {{ l.places_gagnees }} place{{ l.places_gagnees|pluralize }}{% else %}= même rang{% endif %}
+                                            </span>
+                                        {% endif %}
+                                    </div>
+                                {% else %}
+                                    <span class="vide">—</span>
+                                {% endif %}
+                            </td>
+                            {% endfor %}
+                        </tr>
+                    </tfoot>
                 </table>
             </div>
-            {% else %}
-                <p class="empty">Aucune moyenne par matière n'est enregistrée pour cette année.</p>
-            {% endif %}
 
         </section>
 
